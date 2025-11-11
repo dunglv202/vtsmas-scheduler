@@ -1,27 +1,37 @@
-import { useState, Fragment } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { LessonDialog, type LessonInfo, type ScheduleCell } from "@/components/LessonDialog";
+import { fetchTeachingSchedule, type TeachingScheduleDetail } from "@/lib/api";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { CalendarIcon } from "lucide-react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_ABBREVIATIONS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SESSIONS = ["Morning", "Afternoon", "Evening"];
 const PERIODS_PER_SESSION = 5;
 
-// Get current week's dates (Monday to Sunday)
-function getCurrentWeekDates(): Date[] {
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  // Calculate Monday of current week
+// Get week's dates (Monday to Sunday) from a given date
+function getWeekDatesFromDate(date: Date): Date[] {
+  const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  // Calculate Monday of the week containing the given date
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + mondayOffset);
+  const monday = new Date(date);
+  monday.setDate(date.getDate() + mondayOffset);
+  monday.setHours(0, 0, 0, 0); // Reset time to start of day
 
   const weekDates: Date[] = [];
   for (let i = 0; i < 7; i++) {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + i);
-    weekDates.push(date);
+    const weekDate = new Date(monday);
+    weekDate.setDate(monday.getDate() + i);
+    weekDates.push(weekDate);
   }
   return weekDates;
+}
+
+// Get current week's dates (Monday to Sunday)
+function getCurrentWeekDates(): Date[] {
+  return getWeekDatesFromDate(new Date());
 }
 
 // Format date as MM/DD
@@ -31,11 +41,64 @@ function formatDate(date: Date): string {
   return `${month}/${day}`;
 }
 
+// Format date as YYYY-MM-DD for input[type="date"]
+function formatDateForInput(date: Date): string {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// Format week range for display (e.g., "Jan 1 - Jan 7, 2024")
+function formatWeekRange(weekDates: Date[]): string {
+  const monday = weekDates[0];
+  const sunday = weekDates[6];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  
+  const mondayStr = `${months[monday.getMonth()]} ${monday.getDate()}`;
+  const sundayStr = `${months[sunday.getMonth()]} ${sunday.getDate()}, ${sunday.getFullYear()}`;
+  
+  return `${mondayStr} - ${sundayStr}`;
+}
+
+// Format date as YYYY-MM-DD for API
+function formatDateForAPI(date: Date): string {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// Get day name from date (Monday, Tuesday, etc.)
+function getDayNameFromDate(date: Date): string {
+  const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return dayNames[dayOfWeek];
+}
+
+// Map section to session name (0 = Morning, 1 = Afternoon, 2 = Evening)
+function getSessionNameFromSection(section: number): string {
+  const sessionMap: Record<number, string> = {
+    0: "Morning",
+    1: "Afternoon",
+    2: "Evening",
+  };
+  return sessionMap[section] || "Morning";
+}
+
 export default function TeachingSchedule() {
   const [selectedCell, setSelectedCell] = useState<ScheduleCell | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [schedule, setSchedule] = useState<Record<string, LessonInfo>>({});
-  const [weekDates] = useState<Date[]>(getCurrentWeekDates());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [weekDates, setWeekDates] = useState<Date[]>(getCurrentWeekDates());
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  // Update week dates when selected date changes
+  useEffect(() => {
+    setWeekDates(getWeekDatesFromDate(selectedDate));
+  }, [selectedDate]);
 
   const handleCellClick = (day: string, session: string, period: number) => {
     setSelectedCell({ day, session, period });
@@ -62,6 +125,98 @@ export default function TeachingSchedule() {
     return schedule[getCellKey(day, session, period)];
   };
 
+  // Handle date selection from calendar
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date);
+    }
+  };
+
+  // Navigate to previous week
+  const handlePreviousWeek = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(selectedDate.getDate() - 7);
+    setSelectedDate(newDate);
+  };
+
+  // Navigate to next week
+  const handleNextWeek = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(selectedDate.getDate() + 7);
+    setSelectedDate(newDate);
+  };
+
+  // Navigate to current week
+  const handleToday = () => {
+    setSelectedDate(new Date());
+  };
+
+  // Fetch teaching schedule from API
+  useEffect(() => {
+    const loadSchedule = async () => {
+      setIsLoadingSchedule(true);
+      setScheduleError(null);
+
+      try {
+        // Get Monday and Sunday of current week
+        const monday = weekDates[0];
+        const sunday = weekDates[6];
+
+        // Format dates for API
+        const fromDate = formatDateForAPI(monday);
+        const toDate = formatDateForAPI(sunday);
+
+        // TODO: Get these from user context or props
+        // For now, using example values from the API documentation
+        const employeeId = "3a1c68da-2f33-aae3-a9d2-4cd8b7aba805";
+        const schoolYearId = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
+        const schoolLevelCode = "03";
+
+        const response = await fetchTeachingSchedule(
+          fromDate,
+          toDate,
+          employeeId,
+          schoolYearId,
+          schoolLevelCode
+        );
+
+        // Map API response to schedule cells
+        const scheduleMap: Record<string, LessonInfo> = {};
+
+        response.teachingScheduleDetailDtos.forEach((detail: TeachingScheduleDetail) => {
+          // Get day name from dateStudy
+          const dateStudy = new Date(detail.dateStudy);
+          const dayName = getDayNameFromDate(dateStudy);
+
+          // Get session name from section (0=Morning, 1=Afternoon, 2=Evening)
+          const sessionName = getSessionNameFromSection(detail.section);
+
+          // Get period number
+          const period = detail.period;
+
+          // Create cell key
+          const key = getCellKey(dayName, sessionName, period);
+
+          // Map to LessonInfo
+          scheduleMap[key] = {
+            lesson: detail.distributeProgramName || detail.subjectName || "",
+            class: detail.className || "",
+            notes: "",
+          };
+        });
+
+        setSchedule(scheduleMap);
+      } catch (error) {
+        console.error("Failed to fetch teaching schedule:", error);
+        setScheduleError(error instanceof Error ? error.message : "Failed to load schedule");
+      } finally {
+        setIsLoadingSchedule(false);
+      }
+    };
+
+    loadSchedule();
+  }, [weekDates]);
+
   // Generate rows: 3 sessions × 5 periods = 15 rows
   const rows: Array<{ session: string; period: number }> = [];
   SESSIONS.forEach((session) => {
@@ -73,7 +228,62 @@ export default function TeachingSchedule() {
   return (
     <div className="w-full">
       <div className="p-4 mb-4">
-        <h1 className="text-3xl font-bold text-center">Teaching Schedule</h1>
+        <h1 className="text-3xl font-bold text-center mb-4">Teaching Schedule</h1>
+        
+        {/* Week Selector */}
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <Button
+            onClick={handlePreviousWeek}
+            variant="outline"
+            aria-label="Previous week"
+          >
+            ← Prev
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-[280px] justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formatWeekRange(weekDates)}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={weekDates[0]}
+                  onSelect={handleDateSelect}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          
+          <Button
+            onClick={handleNextWeek}
+            variant="outline"
+            aria-label="Next week"
+          >
+            Next →
+          </Button>
+          
+          <Button
+            onClick={handleToday}
+            variant="default"
+          >
+            Today
+          </Button>
+        </div>
+
+        {isLoadingSchedule && (
+          <div className="text-center text-sm text-gray-500 mt-2">Loading schedule...</div>
+        )}
+        {scheduleError && (
+          <div className="text-center text-sm text-red-600 mt-2">Error: {scheduleError}</div>
+        )}
       </div>
 
       <div className="grid grid-cols-8 w-full">
