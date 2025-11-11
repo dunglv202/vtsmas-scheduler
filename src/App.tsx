@@ -1,11 +1,12 @@
-import { Outlet, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import "./App.css";
-import { Button } from "./components/ui/button";
+import Login from "./pages/Login";
 import TeachingSchedule from "./pages/TeachingSchedule";
 
 function App() {
   return (
     <Routes>
+      <Route path="/login" element={<Login />} />
       <Route path="/" element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="teaching-schedule" element={<TeachingSchedule />} />
@@ -25,13 +26,7 @@ function Layout() {
 }
 
 function Home() {
-  return (
-    <div>
-      <h2>Home</h2>
-      <p>Welcome to the Lesson Scheduler application</p>
-      <Button>Explore</Button>
-    </div>
-  );
+  return <Navigate to="/teaching-schedule" />;
 }
 
 export default App;

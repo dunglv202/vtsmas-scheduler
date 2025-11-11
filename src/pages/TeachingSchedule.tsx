@@ -95,7 +95,7 @@ export default function TeachingSchedule() {
   return (
     <div className="w-full">
       <div className="p-4 mb-4">
-        <h1 className="text-4xl font-bold text-center">Teaching Schedule</h1>
+        <h1 className="text-3xl font-bold text-center">Teaching Schedule</h1>
       </div>
 
       <div className="grid grid-cols-8 w-full">
