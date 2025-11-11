@@ -207,3 +207,87 @@ export async function fetchClasses(filter?: ClassFilter): Promise<ClassResponse>
   return response.json();
 }
 
+export interface TeachingScheduleDetail {
+  id: string;
+  teachingScheduleId: string;
+  classId: string;
+  className: string;
+  employeeId: string;
+  employeeName: string | null;
+  gradeCode: string;
+  gradeName: string;
+  dayOfWeek: number;
+  dateStudy: string;
+  period: number;
+  subjectName: string;
+  subjectCode: string;
+  distributeProgramId: string;
+  distributeProgramName: string;
+  distributeProgramPeriod: number;
+  beforeDistributeProgramPeriod: number | null;
+  divisiveConfigurationId: string | null;
+  divisiveConfigurationName: string | null;
+  section: number;
+  [key: string]: unknown;
+}
+
+export interface TeachingScheduleResponse {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  phoneNumber: string;
+  schoolYearId: string;
+  schoolYearCode: string;
+  schoolLevelCode: string;
+  schoolLevel: string | null;
+  dateFrom: string;
+  dateTo: string;
+  weeklyValue: string | null;
+  isApproved: boolean;
+  tenantId: string;
+  teachingScheduleDetailDtos: TeachingScheduleDetail[];
+}
+
+export async function fetchTeachingSchedule(
+  dateFrom: string,
+  dateTo: string,
+  employeeId: string,
+  schoolYearId: string,
+  schoolLevelCode: string = "03"
+): Promise<TeachingScheduleResponse> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  // Format dates as YYYY-MM-DD
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // If dateFrom/dateTo are Date objects, convert them
+  const fromDate = dateFrom instanceof Date ? formatDate(dateFrom) : dateFrom;
+  const toDate = dateTo instanceof Date ? formatDate(dateTo) : dateTo;
+
+  const response = await fetch(
+    `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/theo-tuan/${fromDate}/${toDate}/${employeeId}/${schoolYearId}/${schoolLevelCode}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch teaching schedule: ${response.status} ${response.statusText}. ${errorText}`);
+  }
+
+  return response.json();
+}
+

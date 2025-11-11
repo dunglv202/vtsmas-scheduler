@@ -8,7 +8,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { fetchCurriculum, fetchClasses, type CurriculumItem, type ClassItem } from "@/lib/api";
+import {
+  fetchCurriculum,
+  fetchClasses,
+  fetchTeachingSchedule,
+  type CurriculumItem,
+  type ClassItem,
+  type TeachingScheduleDetail,
+  type TeachingScheduleResponse,
+} from "@/lib/api";
 
 export interface LessonInfo {
   lesson?: string;
@@ -39,9 +47,57 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
   const [lessons, setLessons] = useState<CurriculumItem[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
+  const [isLoadingLatestLecture, setIsLoadingLatestLecture] = useState(false);
   const [classError, setClassError] = useState<string | null>(null);
   const [lessonError, setLessonError] = useState<string | null>(null);
+  const [latestLecture, setLatestLecture] = useState<TeachingScheduleDetail | null>(null);
   const hasInitializedRef = useRef(false);
+
+  // Helper function to get period name
+  const getPeriodName = (period: number, dateStudy?: string): string => {
+    const periodMap: Record<number, string> = {
+      1: "Morning",
+      2: "Afternoon",
+      3: "Evening",
+      4: "Morning", // Period 4 maps to Morning
+    };
+
+    // If period is in the map, return it
+    if (periodMap[period]) {
+      return periodMap[period];
+    }
+
+    // If we have dateStudy, try to determine from time
+    if (dateStudy) {
+      const date = new Date(dateStudy);
+      const hour = date.getHours();
+      if (hour < 12) {
+        return "Morning";
+      } else if (hour < 17) {
+        return "Afternoon";
+      } else {
+        return "Evening";
+      }
+    }
+
+    return `Period ${period}`;
+  };
+
+  // Helper function to format lecture number as ordinal (1st, 2nd, 3rd, etc.)
+  const formatLectureNumber = (num: number): string => {
+    const suffix = ["th", "st", "nd", "rd"];
+    const v = num % 100;
+    return num + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString: string): { day: string; month: string } => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, "0");
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[date.getMonth()];
+    return { day, month };
+  };
 
   // Fetch classes when dialog opens
   useEffect(() => {
@@ -105,11 +161,12 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
 
       // TODO: Replace with actual filter values from props or context
       // For now, using example values from the API documentation
+      const schoolYearId = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
       fetchCurriculum({
         subjectCode: "22",
         gradeCode: selectedClass.gradeLevelCode,
         classId: selectedClassId,
-        schoolYearId: "6570c704-45a0-11ef-82f8-fa163e7dd11b",
+        schoolYearId,
       })
         .then((response) => {
           setLessons(response.items);
@@ -130,8 +187,145 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
           setLessonError(error instanceof Error ? error.message : "Failed to load lessons");
           setIsLoadingLessons(false);
         });
+
+      // Fetch latest lecture for the selected class
+      setIsLoadingLatestLecture(true);
+      // Calculate date range: 2 weeks (previous week Monday to current week Sunday)
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+      // Calculate Monday of current week
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const currentWeekMonday = new Date(today);
+      currentWeekMonday.setDate(today.getDate() + mondayOffset);
+
+      // Calculate Sunday of current week (6 days after Monday)
+      const currentWeekSunday = new Date(currentWeekMonday);
+      currentWeekSunday.setDate(currentWeekMonday.getDate() + 6);
+
+      // Calculate Monday of previous week (7 days before current week Monday)
+      const previousWeekMonday = new Date(currentWeekMonday);
+      previousWeekMonday.setDate(currentWeekMonday.getDate() - 7);
+
+      // Calculate Sunday of previous week (6 days after previous week Monday)
+      const previousWeekSunday = new Date(previousWeekMonday);
+      previousWeekSunday.setDate(previousWeekMonday.getDate() + 6);
+
+      const formatDateForAPI = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, "0");
+        const day = date.getDate().toString().padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+
+      // Prepare date ranges for both weeks
+      const previousWeekFrom = formatDateForAPI(previousWeekMonday);
+      const previousWeekTo = formatDateForAPI(previousWeekSunday);
+      const currentWeekFrom = formatDateForAPI(currentWeekMonday);
+      const currentWeekTo = formatDateForAPI(currentWeekSunday);
+
+      // Calculate the date of the scheduling cell
+      let cellDate: Date | null = null;
+      if (cellInfo) {
+        // Map day names to their index in the week (Monday = 0, Tuesday = 1, ..., Sunday = 6)
+        const dayNameToIndex: Record<string, number> = {
+          Monday: 0,
+          Tuesday: 1,
+          Wednesday: 2,
+          Thursday: 3,
+          Friday: 4,
+          Saturday: 5,
+          Sunday: 6,
+        };
+        const cellDayIndex = dayNameToIndex[cellInfo.day];
+        if (cellDayIndex !== undefined) {
+          // Calculate the date for the cell's day in the current week
+          cellDate = new Date(currentWeekMonday);
+          cellDate.setDate(currentWeekMonday.getDate() + cellDayIndex);
+          // Set time to end of day to include lectures on the same day
+          cellDate.setHours(23, 59, 59, 999);
+        }
+      }
+
+      // TODO: Get employeeId from user context or props
+      // For now, using example employeeId from the API documentation
+      const employeeId = "3a1c68da-2f33-aae3-a9d2-4cd8b7aba805";
+
+      // Call API twice: once for previous week and once for current week
+      Promise.all([
+        fetchTeachingSchedule(previousWeekFrom, previousWeekTo, employeeId, schoolYearId, "03"),
+        fetchTeachingSchedule(currentWeekFrom, currentWeekTo, employeeId, schoolYearId, "03"),
+      ])
+        .then(([previousWeekResponse, currentWeekResponse]: [TeachingScheduleResponse, TeachingScheduleResponse]) => {
+          // Combine lectures from both weeks
+          const allLectures = [
+            ...previousWeekResponse.teachingScheduleDetailDtos,
+            ...currentWeekResponse.teachingScheduleDetailDtos,
+          ];
+
+          // Find lectures for this class, excluding those after the cell date
+          let classLectures = allLectures.filter((detail: TeachingScheduleDetail) => {
+            if (detail.classId !== selectedClassId) {
+              return false;
+            }
+            // Exclude lectures after the scheduling cell date
+            if (cellDate) {
+              const lectureDate = new Date(detail.dateStudy);
+              return lectureDate <= cellDate;
+            }
+            return true;
+          });
+
+          if (classLectures.length > 0) {
+            // Sort by dateStudy descending to get the latest
+            const sortedLectures = classLectures.sort((a: TeachingScheduleDetail, b: TeachingScheduleDetail) => {
+              const dateA = new Date(a.dateStudy).getTime();
+              const dateB = new Date(b.dateStudy).getTime();
+              return dateB - dateA;
+            });
+
+            const latest = sortedLectures[0];
+
+            // Calculate lecture number within the period for the same day and period
+            // Find all lectures on the same date and period, sort by time/order
+            const sameDayPeriodLectures = allLectures.filter((detail: TeachingScheduleDetail) => {
+              if (detail.classId !== selectedClassId) return false;
+              const detailDate = new Date(detail.dateStudy).toDateString();
+              const latestDate = new Date(latest.dateStudy).toDateString();
+              return detailDate === latestDate && detail.period === latest.period;
+            });
+
+            // Sort by some order (we'll use section or assume chronological order)
+            sameDayPeriodLectures.sort((a, b) => {
+              // Try to use section if available, otherwise maintain order
+              if (a.section !== undefined && b.section !== undefined) {
+                return a.section - b.section;
+              }
+              return 0;
+            });
+
+            // Find the index of the latest lecture in the same day/period
+            const lectureNumberInPeriod = sameDayPeriodLectures.findIndex((d) => d.id === latest.id) + 1;
+
+            // Add the calculated lecture number to the latest lecture object
+            const latestWithLectureNumber = {
+              ...latest,
+              lectureNumberInPeriod: lectureNumberInPeriod || 1, // Default to 1 if not found
+            };
+
+            setLatestLecture(latestWithLectureNumber as TeachingScheduleDetail & { lectureNumberInPeriod: number });
+          } else {
+            setLatestLecture(null);
+          }
+          setIsLoadingLatestLecture(false);
+        })
+        .catch((error: unknown) => {
+          console.error("Failed to fetch latest lecture:", error);
+          setLatestLecture(null);
+          setIsLoadingLatestLecture(false);
+        });
     }
-  }, [isOpen, selectedClassId, classes, initialData]);
+  }, [isOpen, selectedClassId, classes, initialData, cellInfo]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,24 +424,43 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
           </div>
 
           {/* Latest Lecture Section */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Latest Lecture</label>
-            <div className="flex gap-3 p-3 border border-gray-300 rounded-md bg-gray-50">
-              {/* Left: Calendar-style date */}
-              <div className="shrink-0 w-16 h-16 bg-white border-2 border-gray-300 rounded-md flex flex-col items-center justify-center shadow-sm">
-                <div className="text-2xl font-bold text-gray-800">03</div>
-                <div className="text-xs font-semibold text-gray-600 uppercase">Jul</div>
-              </div>
+          {selectedClassId && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Latest Lecture</label>
+              {isLoadingLatestLecture ? (
+                <div className="text-sm text-gray-500 p-3">Loading latest lecture...</div>
+              ) : latestLecture ? (
+                <div className="flex gap-3 p-3 border border-gray-300 rounded-md bg-gray-50">
+                  {/* Left: Calendar-style date */}
+                  {(() => {
+                    const { day, month } = formatDate(latestLecture.dateStudy);
+                    return (
+                      <div className="shrink-0 w-16 h-16 bg-white border-2 border-gray-300 rounded-md flex flex-col items-center justify-center shadow-sm">
+                        <div className="text-2xl font-bold text-gray-800">{day}</div>
+                        <div className="text-xs font-semibold text-gray-600 uppercase">{month}</div>
+                      </div>
+                    );
+                  })()}
 
-              {/* Right: Details */}
-              <div className="flex-1 flex flex-col justify-center space-y-1">
-                <div className="text-sm font-semibold text-gray-800">6A - Morning</div>
-                <div className="text-xs text-gray-600">
-                  1 - Làm quen với học sinh, ôn tập củng cố kiến thức TA Tiểu học
+                  {/* Right: Details */}
+                  <div className="flex-1 flex flex-col justify-center space-y-1">
+                    <div className="text-sm font-semibold text-gray-800">
+                      {latestLecture.className} - {getPeriodName(latestLecture.period, latestLecture.dateStudy)} -
+                      Period {latestLecture.period}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {formatLectureNumber(latestLecture.distributeProgramPeriod)} -{" "}
+                      {latestLecture.distributeProgramName}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-sm text-gray-500 p-3 border border-gray-300 rounded-md bg-gray-50">
+                  No latest lecture found
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Notes */}
           <div className="space-y-2">
