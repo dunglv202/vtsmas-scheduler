@@ -229,6 +229,26 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
             {lessonError && <p className="text-sm text-red-600">{lessonError}</p>}
           </div>
 
+          {/* Latest Lecture Section */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Latest Lecture</label>
+            <div className="flex gap-3 p-3 border border-gray-300 rounded-md bg-gray-50">
+              {/* Left: Calendar-style date */}
+              <div className="shrink-0 w-16 h-16 bg-white border-2 border-gray-300 rounded-md flex flex-col items-center justify-center shadow-sm">
+                <div className="text-2xl font-bold text-gray-800">03</div>
+                <div className="text-xs font-semibold text-gray-600 uppercase">Jul</div>
+              </div>
+
+              {/* Right: Details */}
+              <div className="flex-1 flex flex-col justify-center space-y-1">
+                <div className="text-sm font-semibold text-gray-800">6A - Morning</div>
+                <div className="text-xs text-gray-600">
+                  1 - Làm quen với học sinh, ôn tập củng cố kiến thức TA Tiểu học
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Notes */}
           <div className="space-y-2">
             <label htmlFor="notes" className="text-sm font-medium">
