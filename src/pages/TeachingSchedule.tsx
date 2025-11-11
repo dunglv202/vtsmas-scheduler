@@ -10,11 +10,25 @@ import {
 import { Button } from "@/components/ui/button";
 
 interface LessonInfo {
-  subject?: string;
+  lesson?: string;
   class?: string;
-  room?: string;
   notes?: string;
 }
+
+// Sample data - these should ideally come from an API
+const CLASSES = ["Class A", "Class B", "Class C", "Class D", "Class E", "Class F"];
+const LESSONS = [
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "English",
+  "History",
+  "Geography",
+  "Computer Science",
+  "Art",
+  "Music",
+];
 
 interface ScheduleCell {
   day: string;
@@ -140,9 +154,8 @@ export default function TeachingSchedule() {
                 >
                   {lesson && (
                     <div className="text-xs space-y-1">
-                      {lesson.subject && <div className="font-semibold text-gray-800">{lesson.subject}</div>}
+                      {lesson.lesson && <div className="font-semibold text-gray-800">{lesson.lesson}</div>}
                       {lesson.class && <div className="text-gray-600">Class: {lesson.class}</div>}
-                      {lesson.room && <div className="text-gray-600">Room: {lesson.room}</div>}
                     </div>
                   )}
                 </div>
@@ -178,17 +191,15 @@ interface LessonDialogProps {
 }
 
 function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }: LessonDialogProps) {
-  const [subject, setSubject] = useState(initialData?.subject || "");
-  const [classRoom, setClassRoom] = useState(initialData?.class || "");
-  const [room, setRoom] = useState(initialData?.room || "");
+  const [selectedClass, setSelectedClass] = useState(initialData?.class || "");
+  const [selectedLesson, setSelectedLesson] = useState(initialData?.lesson || "");
   const [notes, setNotes] = useState(initialData?.notes || "");
 
   // Reset form when dialog opens/closes or initialData changes
   useEffect(() => {
     if (isOpen) {
-      setSubject(initialData?.subject || "");
-      setClassRoom(initialData?.class || "");
-      setRoom(initialData?.room || "");
+      setSelectedClass(initialData?.class || "");
+      setSelectedLesson(initialData?.lesson || "");
       setNotes(initialData?.notes || "");
     }
   }, [isOpen, initialData]);
@@ -196,9 +207,8 @@ function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }: Lesson
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
-      subject,
-      class: classRoom,
-      room,
+      lesson: selectedLesson,
+      class: selectedClass,
       notes,
     });
   };
@@ -217,48 +227,58 @@ function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }: Lesson
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Class Selection - Radio buttons styled as rectangular buttons */}
           <div className="space-y-2">
-            <label htmlFor="subject" className="text-sm font-medium">
-              Subject
-            </label>
-            <input
-              id="subject"
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter subject name"
-            />
+            <label className="text-sm font-medium">Class</label>
+            <div className="flex flex-wrap gap-2">
+              {CLASSES.map((className) => (
+                <label
+                  key={className}
+                  className={`
+                    flex-1 min-w-[100px] px-4 py-2 border-2 rounded-md cursor-pointer text-center
+                    transition-all duration-200
+                    ${
+                      selectedClass === className
+                        ? "bg-blue-500 text-white border-blue-500 font-semibold"
+                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-300 hover:bg-blue-50"
+                    }
+                  `}
+                >
+                  <input
+                    type="radio"
+                    name="class"
+                    value={className}
+                    checked={selectedClass === className}
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                    className="hidden"
+                  />
+                  {className}
+                </label>
+              ))}
+            </div>
           </div>
 
+          {/* Lesson Selection - Dropdown */}
           <div className="space-y-2">
-            <label htmlFor="class" className="text-sm font-medium">
-              Class
+            <label htmlFor="lesson" className="text-sm font-medium">
+              Lesson
             </label>
-            <input
-              id="class"
-              type="text"
-              value={classRoom}
-              onChange={(e) => setClassRoom(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter class name"
-            />
+            <select
+              id="lesson"
+              value={selectedLesson}
+              onChange={(e) => setSelectedLesson(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Select a lesson</option>
+              {LESSONS.map((lesson) => (
+                <option key={lesson} value={lesson}>
+                  {lesson}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="room" className="text-sm font-medium">
-              Room
-            </label>
-            <input
-              id="room"
-              type="text"
-              value={room}
-              onChange={(e) => setRoom(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter room number"
-            />
-          </div>
-
+          {/* Notes */}
           <div className="space-y-2">
             <label htmlFor="notes" className="text-sm font-medium">
               Notes
