@@ -94,6 +94,7 @@ export default function TeachingSchedule() {
   const [weekDates, setWeekDates] = useState<Date[]>(getCurrentWeekDates());
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   // Update week dates when selected date changes
   useEffect(() => {
@@ -129,6 +130,7 @@ export default function TeachingSchedule() {
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date);
+      setIsCalendarOpen(false); // Close the popover after selecting a date
     }
   };
 
@@ -232,7 +234,7 @@ export default function TeachingSchedule() {
           </Button>
 
           <div className="flex items-center gap-2">
-            <Popover>
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
                   <CalendarIcon className="mr-2 h-4 w-4" />
