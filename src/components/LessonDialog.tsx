@@ -26,8 +26,8 @@ export interface LessonInfo {
 
 export interface ScheduleCell {
   day: string;
-  period: string;
-  lecture: number;
+  session: string; // Morning, Afternoon, Evening
+  period: number; // 1-5, the period within a session
   lesson?: LessonInfo;
 }
 
@@ -53,18 +53,38 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
   const [latestLecture, setLatestLecture] = useState<TeachingScheduleDetail | null>(null);
   const hasInitializedRef = useRef(false);
 
-  // Helper function to get period name
-  const getPeriodName = (period: number, dateStudy?: string): string => {
-    const periodMap: Record<number, string> = {
+  // Helper function to normalize session number (1,4 = Morning; 2 = Afternoon; 3 = Evening)
+  // Note: API uses "period" field for session (Morning/Afternoon/Evening)
+  const normalizeSession = (sessionNumber: number): number => {
+    // Session 1 and 4 both map to Morning (1)
+    if (sessionNumber === 1 || sessionNumber === 4) {
+      return 1;
+    }
+    // Session 2 maps to Afternoon (2)
+    if (sessionNumber === 2) {
+      return 2;
+    }
+    // Session 3 maps to Evening (3)
+    if (sessionNumber === 3) {
+      return 3;
+    }
+    // For other sessions, return as is (but this shouldn't happen normally)
+    return sessionNumber;
+  };
+
+  // Helper function to get session name (Morning/Afternoon/Evening)
+  // Note: API uses "period" field for session
+  const getSessionName = (sessionNumber: number, dateStudy?: string): string => {
+    const sessionMap: Record<number, string> = {
       1: "Morning",
       2: "Afternoon",
       3: "Evening",
-      4: "Morning", // Period 4 maps to Morning
+      4: "Morning", // Session 4 maps to Morning
     };
 
-    // If period is in the map, return it
-    if (periodMap[period]) {
-      return periodMap[period];
+    // If session is in the map, return it
+    if (sessionMap[sessionNumber]) {
+      return sessionMap[sessionNumber];
     }
 
     // If we have dateStudy, try to determine from time
@@ -80,11 +100,11 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
       }
     }
 
-    return `Period ${period}`;
+    return `Session ${sessionNumber}`;
   };
 
-  // Helper function to format lecture number as ordinal (1st, 2nd, 3rd, etc.)
-  const formatLectureNumber = (num: number): string => {
+  // Helper function to format period number as ordinal (1st, 2nd, 3rd, etc.)
+  const formatPeriodNumber = (num: number): string => {
     const suffix = ["th", "st", "nd", "rd"];
     const v = num % 100;
     return num + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
@@ -224,8 +244,9 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
       const currentWeekFrom = formatDateForAPI(currentWeekMonday);
       const currentWeekTo = formatDateForAPI(currentWeekSunday);
 
-      // Calculate the date of the scheduling cell
+      // Calculate the date and session of the scheduling cell
       let cellDate: Date | null = null;
+      let cellSession: number | null = null;
       if (cellInfo) {
         // Map day names to their index in the week (Monday = 0, Tuesday = 1, ..., Sunday = 6)
         const dayNameToIndex: Record<string, number> = {
@@ -245,6 +266,14 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
           // Set time to end of day to include lectures on the same day
           cellDate.setHours(23, 59, 59, 999);
         }
+
+        // Map session name to session number (API uses "period" field for session)
+        const sessionNameToNumber: Record<string, number> = {
+          Morning: 1,
+          Afternoon: 2,
+          Evening: 3,
+        };
+        cellSession = sessionNameToNumber[cellInfo.session] || null;
       }
 
       // TODO: Get employeeId from user context or props
@@ -263,57 +292,116 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
             ...currentWeekResponse.teachingScheduleDetailDtos,
           ];
 
-          // Find lectures for this class, excluding those after the cell date
+          // Find lectures for this class, excluding those after the cell date and session
           let classLectures = allLectures.filter((detail: TeachingScheduleDetail) => {
             if (detail.classId !== selectedClassId) {
               return false;
             }
-            // Exclude lectures after the scheduling cell date
+            // Exclude lectures after the scheduling cell date and session
             if (cellDate) {
               const lectureDate = new Date(detail.dateStudy);
-              return lectureDate <= cellDate;
+              const lectureDateOnly = new Date(
+                lectureDate.getFullYear(),
+                lectureDate.getMonth(),
+                lectureDate.getDate()
+              );
+              const cellDateOnly = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+
+              // If lecture is on a later date, exclude it
+              if (lectureDateOnly > cellDateOnly) {
+                return false;
+              }
+
+              // If lecture is on the same date, check the session and period
+              if (lectureDateOnly.getTime() === cellDateOnly.getTime() && cellSession !== null && cellInfo) {
+                // Normalize sessions before comparison (1,4 = Morning; 2 = Afternoon; 3 = Evening)
+                // Note: API uses "period" field for session (Morning/Afternoon/Evening)
+                const normalizedLectureSession = normalizeSession(detail.period);
+                const normalizedCellSession = normalizeSession(cellSession);
+
+                // Exclude lectures in sessions after the cell's session
+                // Afternoon (2) is after Morning (1), Evening (3) is after both
+                // Session takes precedence: Afternoon period 1 is after Morning period 5
+                if (normalizedLectureSession > normalizedCellSession) {
+                  return false;
+                }
+
+                // If same session, check period number
+                if (normalizedLectureSession === normalizedCellSession) {
+                  // Get period number from section field, or use a default ordering
+                  const lecturePeriod = detail.section || 0;
+                  const cellPeriod = cellInfo.period || 0;
+
+                  // Exclude lectures with higher period number in the same session
+                  if (lecturePeriod > cellPeriod) {
+                    return false;
+                  }
+
+                  // Exclude lectures in the exact same timeslot (same day, same session, same period)
+                  if (lecturePeriod === cellPeriod) {
+                    return false;
+                  }
+                }
+              }
             }
             return true;
           });
 
           if (classLectures.length > 0) {
-            // Sort by dateStudy descending to get the latest
+            // Sort by dateStudy, then by session, then by period to get the latest
             const sortedLectures = classLectures.sort((a: TeachingScheduleDetail, b: TeachingScheduleDetail) => {
               const dateA = new Date(a.dateStudy).getTime();
               const dateB = new Date(b.dateStudy).getTime();
-              return dateB - dateA;
+
+              // First compare by date (descending - most recent first)
+              if (dateB !== dateA) {
+                return dateB - dateA;
+              }
+
+              // If same date, compare by normalized session (descending - later session first)
+              // Afternoon (2) is after Morning (1), Evening (3) is after both
+              // Note: API uses "period" field for session
+              const normalizedSessionA = normalizeSession(a.period);
+              const normalizedSessionB = normalizeSession(b.period);
+              if (normalizedSessionB !== normalizedSessionA) {
+                return normalizedSessionB - normalizedSessionA;
+              }
+
+              // If same date and session, compare by period (section field) (descending - higher period first)
+              return (b.section || 0) - (a.section || 0);
             });
 
             const latest = sortedLectures[0];
 
-            // Calculate lecture number within the period for the same day and period
-            // Find all lectures on the same date and period, sort by time/order
-            const sameDayPeriodLectures = allLectures.filter((detail: TeachingScheduleDetail) => {
+            // Calculate period number within the session for the same day and session
+            // Find all lectures on the same date and session, sort by period/order
+            // Note: API uses "period" field for session (Morning/Afternoon/Evening)
+            const sameDaySessionLectures = allLectures.filter((detail: TeachingScheduleDetail) => {
               if (detail.classId !== selectedClassId) return false;
               const detailDate = new Date(detail.dateStudy).toDateString();
               const latestDate = new Date(latest.dateStudy).toDateString();
               return detailDate === latestDate && detail.period === latest.period;
             });
 
-            // Sort by some order (we'll use section or assume chronological order)
-            sameDayPeriodLectures.sort((a, b) => {
-              // Try to use section if available, otherwise maintain order
+            // Sort by period number (section field)
+            sameDaySessionLectures.sort((a, b) => {
+              // Use section as period number if available, otherwise maintain order
               if (a.section !== undefined && b.section !== undefined) {
                 return a.section - b.section;
               }
               return 0;
             });
 
-            // Find the index of the latest lecture in the same day/period
-            const lectureNumberInPeriod = sameDayPeriodLectures.findIndex((d) => d.id === latest.id) + 1;
+            // Find the index of the latest lecture in the same day/session
+            const periodNumberInSession = sameDaySessionLectures.findIndex((d) => d.id === latest.id) + 1;
 
-            // Add the calculated lecture number to the latest lecture object
-            const latestWithLectureNumber = {
+            // Add the calculated period number to the latest lecture object
+            const latestWithPeriodNumber = {
               ...latest,
-              lectureNumberInPeriod: lectureNumberInPeriod || 1, // Default to 1 if not found
+              periodNumberInSession: periodNumberInSession || 1, // Default to 1 if not found
             };
 
-            setLatestLecture(latestWithLectureNumber as TeachingScheduleDetail & { lectureNumberInPeriod: number });
+            setLatestLecture(latestWithPeriodNumber as TeachingScheduleDetail & { periodNumberInSession: number });
           } else {
             setLatestLecture(null);
           }
@@ -348,7 +436,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
 
   const getDialogTitle = () => {
     if (!cellInfo) return "Add Lesson";
-    return `${cellInfo.day} - ${cellInfo.period} - Lecture ${cellInfo.lecture}`;
+    return `${cellInfo.day} - ${cellInfo.session} - Period ${cellInfo.period}`;
   };
 
   return (
@@ -445,11 +533,15 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
                   {/* Right: Details */}
                   <div className="flex-1 flex flex-col justify-center space-y-1">
                     <div className="text-sm font-semibold text-gray-800">
-                      {latestLecture.className} - {getPeriodName(latestLecture.period, latestLecture.dateStudy)} -
-                      Period {latestLecture.period}
+                      {latestLecture.className} - {getSessionName(latestLecture.period, latestLecture.dateStudy)} -
+                      Period{" "}
+                      {(latestLecture as TeachingScheduleDetail & { periodNumberInSession?: number })
+                        .periodNumberInSession ||
+                        latestLecture.section ||
+                        latestLecture.period}
                     </div>
                     <div className="text-xs text-gray-600">
-                      {formatLectureNumber(latestLecture.distributeProgramPeriod)} -{" "}
+                      {formatPeriodNumber(latestLecture.distributeProgramPeriod)} -{" "}
                       {latestLecture.distributeProgramName}
                     </div>
                   </div>

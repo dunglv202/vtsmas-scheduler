@@ -3,8 +3,8 @@ import { LessonDialog, type LessonInfo, type ScheduleCell } from "@/components/L
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_ABBREVIATIONS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const PERIODS = ["Morning", "Afternoon", "Evening"];
-const LECTURES_PER_PERIOD = 5;
+const SESSIONS = ["Morning", "Afternoon", "Evening"];
+const PERIODS_PER_SESSION = 5;
 
 // Get current week's dates (Monday to Sunday)
 function getCurrentWeekDates(): Date[] {
@@ -37,14 +37,14 @@ export default function TeachingSchedule() {
   const [schedule, setSchedule] = useState<Record<string, LessonInfo>>({});
   const [weekDates] = useState<Date[]>(getCurrentWeekDates());
 
-  const handleCellClick = (day: string, period: string, lecture: number) => {
-    setSelectedCell({ day, period, lecture });
+  const handleCellClick = (day: string, session: string, period: number) => {
+    setSelectedCell({ day, session, period });
     setIsDialogOpen(true);
   };
 
   const handleSaveLesson = (lessonInfo: LessonInfo) => {
     if (selectedCell) {
-      const key = `${selectedCell.day}-${selectedCell.period}-${selectedCell.lecture}`;
+      const key = `${selectedCell.day}-${selectedCell.session}-${selectedCell.period}`;
       setSchedule((prev) => ({
         ...prev,
         [key]: lessonInfo,
@@ -54,19 +54,19 @@ export default function TeachingSchedule() {
     setSelectedCell(null);
   };
 
-  const getCellKey = (day: string, period: string, lecture: number) => {
-    return `${day}-${period}-${lecture}`;
+  const getCellKey = (day: string, session: string, period: number) => {
+    return `${day}-${session}-${period}`;
   };
 
-  const getCellLesson = (day: string, period: string, lecture: number) => {
-    return schedule[getCellKey(day, period, lecture)];
+  const getCellLesson = (day: string, session: string, period: number) => {
+    return schedule[getCellKey(day, session, period)];
   };
 
-  // Generate rows: 3 periods × 5 lectures = 15 rows
-  const rows: Array<{ period: string; lecture: number }> = [];
-  PERIODS.forEach((period) => {
-    for (let lecture = 1; lecture <= LECTURES_PER_PERIOD; lecture++) {
-      rows.push({ period, lecture });
+  // Generate rows: 3 sessions × 5 periods = 15 rows
+  const rows: Array<{ session: string; period: number }> = [];
+  SESSIONS.forEach((session) => {
+    for (let period = 1; period <= PERIODS_PER_SESSION; period++) {
+      rows.push({ session, period });
     }
   });
 
@@ -98,17 +98,17 @@ export default function TeachingSchedule() {
           <Fragment key={`row-${rowIndex}`}>
             {/* Row label (first column) */}
             <div className="bg-gray-50 p-2 text-sm text-center border-r border-b border-gray-300 font-medium sticky left-0 z-5">
-              {row.lecture === 1 && <div className="font-semibold text-gray-700">{row.period}</div>}
-              <div className="text-xs text-gray-600">L{row.lecture}</div>
+              {row.period === 1 && <div className="font-semibold text-gray-700">{row.session}</div>}
+              <div className="text-xs text-gray-600">P{row.period}</div>
             </div>
 
             {/* Day cells */}
             {DAYS.map((day, dayIndex) => {
-              const lesson = getCellLesson(day, row.period, row.lecture);
+              const lesson = getCellLesson(day, row.session, row.period);
               return (
                 <div
                   key={`${day}-${rowIndex}`}
-                  onClick={() => handleCellClick(day, row.period, row.lecture)}
+                  onClick={() => handleCellClick(day, row.session, row.period)}
                   className={`
                     p-2 min-h-[80px] border-r border-b border-gray-300 cursor-pointer
                     hover:bg-blue-50 transition-colors
@@ -138,7 +138,7 @@ export default function TeachingSchedule() {
         }}
         onSave={handleSaveLesson}
         initialData={
-          selectedCell ? getCellLesson(selectedCell.day, selectedCell.period, selectedCell.lecture) : undefined
+          selectedCell ? getCellLesson(selectedCell.day, selectedCell.session, selectedCell.period) : undefined
         }
         cellInfo={selectedCell}
       />
