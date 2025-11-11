@@ -21,7 +21,8 @@ import {
 export interface LessonInfo {
   lesson?: string;
   class?: string;
-  notes?: string;
+  description?: string;
+  lessonPeriod?: number; // distributeProgramPeriod from API
 }
 
 export interface ScheduleCell {
@@ -41,8 +42,8 @@ interface LessonDialogProps {
 
 export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }: LessonDialogProps) {
   const [selectedClassId, setSelectedClassId] = useState<string>("");
-  const [selectedLesson, setSelectedLesson] = useState(initialData?.lesson || "");
-  const [notes, setNotes] = useState(initialData?.notes || "");
+  const [selectedLesson, setSelectedLesson] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [lessons, setLessons] = useState<CurriculumItem[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
@@ -52,6 +53,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
   const [lessonError, setLessonError] = useState<string | null>(null);
   const [previousLecture, setPreviousLecture] = useState<TeachingScheduleDetail | null>(null);
   const hasInitializedRef = useRef(false);
+  const previousInitialDataRef = useRef<LessonInfo | undefined>(undefined);
 
   // Helper function to normalize session number
   // API uses section field: 0 = Morning, 1 = Afternoon, 2 = Evening
@@ -110,7 +112,11 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
   // Fetch classes when dialog opens
   useEffect(() => {
     if (isOpen) {
-      hasInitializedRef.current = false;
+      // Reset initialization flag when dialog opens or initialData changes
+      if (previousInitialDataRef.current !== initialData) {
+        hasInitializedRef.current = false;
+        previousInitialDataRef.current = initialData;
+      }
       setIsLoadingClasses(true);
       setClassError(null);
       // TODO: Replace with actual filter values from props or context
@@ -130,14 +136,15 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
     } else {
       // Reset when dialog closes
       hasInitializedRef.current = false;
+      previousInitialDataRef.current = undefined;
       setSelectedClassId("");
       setSelectedLesson("");
       setNotes("");
       setLessons([]);
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
-  // Initialize form with initialData when classes are loaded (only once)
+  // Initialize form with initialData when classes are loaded (only once per initialData change)
   useEffect(() => {
     if (isOpen && classes.length > 0 && !hasInitializedRef.current) {
       hasInitializedRef.current = true;
@@ -148,7 +155,10 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
           setSelectedClassId(matchedClass.id);
         }
       }
-      setNotes(initialData?.notes || "");
+      // Set notes from initialData
+      setNotes(initialData?.description || "");
+      // Don't reset lesson here - it will be handled by the lesson-fetching useEffect
+      // when the class is set, and then restored from initialData after lessons load
     }
   }, [isOpen, initialData, classes]);
 
@@ -158,7 +168,9 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
       setIsLoadingLessons(true);
       setLessonError(null);
       setLessons([]);
-      setSelectedLesson(""); // Reset lesson selection when class changes
+      // Reset lesson selection when class changes
+      // It will be restored from initialData after lessons load if applicable
+      setSelectedLesson("");
 
       // Find the selected class to get gradeCode
       const selectedClass = classes.find((cls) => cls.id === selectedClassId);
@@ -181,13 +193,60 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
           setIsLoadingLessons(false);
 
           // After lessons are loaded, match the saved lesson if initialData exists
-          if (initialData?.lesson) {
-            const matchedLesson = response.items.find((lesson) => {
-              const displayName = `${lesson.period} - ${lesson.name}`;
-              return displayName === initialData.lesson;
-            });
-            if (matchedLesson) {
-              setSelectedLesson(matchedLesson.id);
+          // Only match if the selected class matches the class from initialData
+          if (initialData?.class) {
+            const selectedClass = classes.find((cls) => cls.id === selectedClassId);
+            // Only autofill lesson if the selected class matches initialData class
+            if (selectedClass && selectedClass.className === initialData.class) {
+              let matchedLesson = null;
+
+              // First, try matching by lesson period number (most reliable)
+              if (initialData.lessonPeriod !== undefined) {
+                matchedLesson = response.items.find((lesson) => lesson.period === initialData.lessonPeriod);
+              }
+
+              // If not found by period, fall back to name matching
+              if (!matchedLesson && initialData.lesson) {
+                // Normalize strings for comparison (trim and lowercase)
+                const normalize = (str: string) => str.trim().toLowerCase();
+                const normalizedInitialLesson = normalize(initialData.lesson);
+
+                matchedLesson = response.items.find((lesson) => {
+                  const normalizedLessonName = normalize(lesson.name);
+
+                  // Try matching with period prefix first (format: "X - Lesson Name")
+                  const displayName = `${lesson.period} - ${lesson.name}`;
+                  if (normalize(displayName) === normalizedInitialLesson) {
+                    return true;
+                  }
+                  // Also try matching just the name (for lessons from API that don't have period prefix)
+                  // This handles cases where initialData.lesson is just "Lesson Name" from distributeProgramName
+                  if (normalizedLessonName === normalizedInitialLesson) {
+                    return true;
+                  }
+                  // Try partial matching (in case of slight differences)
+                  // Check if initialData.lesson contains the lesson name or vice versa
+                  if (
+                    normalizedLessonName &&
+                    (normalizedInitialLesson.includes(normalizedLessonName) ||
+                      normalizedLessonName.includes(normalizedInitialLesson))
+                  ) {
+                    return true;
+                  }
+                  return false;
+                });
+              }
+
+              if (matchedLesson) {
+                setSelectedLesson(matchedLesson.id);
+              } else {
+                // Debug: log when lesson is not found
+                console.log("Lesson not found for autofill:", {
+                  initialDataLesson: initialData.lesson,
+                  initialDataLessonPeriod: initialData.lessonPeriod,
+                  availableLessons: response.items.map((l) => `${l.period} - ${l.name}`),
+                });
+              }
             }
           }
         })
@@ -390,7 +449,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
     onSave({
       lesson: lessonDisplayName,
       class: className,
-      notes,
+      description: notes,
     });
   };
 
@@ -521,6 +580,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
               onChange={(e) => setNotes(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
               placeholder="Additional notes (optional)"
+              spellCheck={false}
             />
           </div>
 

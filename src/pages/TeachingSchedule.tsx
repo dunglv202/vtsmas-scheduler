@@ -54,10 +54,10 @@ function formatWeekRange(weekDates: Date[]): string {
   const monday = weekDates[0];
   const sunday = weekDates[6];
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  
+
   const mondayStr = `${months[monday.getMonth()]} ${monday.getDate()}`;
   const sundayStr = `${months[sunday.getMonth()]} ${sunday.getDate()}, ${sunday.getFullYear()}`;
-  
+
   return `${mondayStr} - ${sundayStr}`;
 }
 
@@ -172,13 +172,7 @@ export default function TeachingSchedule() {
         const schoolYearId = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
         const schoolLevelCode = "03";
 
-        const response = await fetchTeachingSchedule(
-          fromDate,
-          toDate,
-          employeeId,
-          schoolYearId,
-          schoolLevelCode
-        );
+        const response = await fetchTeachingSchedule(fromDate, toDate, employeeId, schoolYearId, schoolLevelCode);
 
         // Map API response to schedule cells
         const scheduleMap: Record<string, LessonInfo> = {};
@@ -201,7 +195,8 @@ export default function TeachingSchedule() {
           scheduleMap[key] = {
             lesson: detail.distributeProgramName || detail.subjectName || "",
             class: detail.className || "",
-            notes: "",
+            description: detail.description || "",
+            lessonPeriod: detail.distributeProgramPeriod,
           };
         });
 
@@ -229,61 +224,38 @@ export default function TeachingSchedule() {
     <div className="w-full">
       <div className="p-4 mb-4">
         <h1 className="text-3xl font-bold text-center mb-4">Teaching Schedule</h1>
-        
+
         {/* Week Selector */}
         <div className="flex items-center justify-center gap-4 mb-4">
-          <Button
-            onClick={handlePreviousWeek}
-            variant="outline"
-            aria-label="Previous week"
-          >
+          <Button onClick={handlePreviousWeek} variant="outline" aria-label="Previous week">
             ← Prev
           </Button>
-          
+
           <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-[280px] justify-start text-left font-normal"
-                >
+                <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {formatWeekRange(weekDates)}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={weekDates[0]}
-                  onSelect={handleDateSelect}
-                  initialFocus
-                />
+                <Calendar mode="single" selected={weekDates[0]} onSelect={handleDateSelect} initialFocus />
               </PopoverContent>
             </Popover>
           </div>
-          
-          <Button
-            onClick={handleNextWeek}
-            variant="outline"
-            aria-label="Next week"
-          >
+
+          <Button onClick={handleNextWeek} variant="outline" aria-label="Next week">
             Next →
           </Button>
-          
-          <Button
-            onClick={handleToday}
-            variant="default"
-          >
+
+          <Button onClick={handleToday} variant="default">
             Today
           </Button>
         </div>
 
-        {isLoadingSchedule && (
-          <div className="text-center text-sm text-gray-500 mt-2">Loading schedule...</div>
-        )}
-        {scheduleError && (
-          <div className="text-center text-sm text-red-600 mt-2">Error: {scheduleError}</div>
-        )}
+        {isLoadingSchedule && <div className="text-center text-sm text-gray-500 mt-2">Loading schedule...</div>}
+        {scheduleError && <div className="text-center text-sm text-red-600 mt-2">Error: {scheduleError}</div>}
       </div>
 
       <div className="grid grid-cols-8 w-full">
@@ -328,7 +300,7 @@ export default function TeachingSchedule() {
                 >
                   {lesson && (
                     <div className="text-xs space-y-1">
-                      {lesson.lesson && <div className="font-semibold text-gray-800">{lesson.lesson}</div>}
+                      {lesson.lesson && <div className="font-semibold text-gray-800 line-clamp-2">{lesson.lesson}</div>}
                       {lesson.class && <div className="text-gray-600">Class: {lesson.class}</div>}
                     </div>
                   )}

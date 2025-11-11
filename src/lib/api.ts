@@ -228,6 +228,7 @@ export interface TeachingScheduleDetail {
   divisiveConfigurationId: string | null;
   divisiveConfigurationName: string | null;
   section: number;
+  description?: string;
   [key: string]: unknown;
 }
 
