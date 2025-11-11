@@ -1,5 +1,6 @@
 import { Routes, Route, Outlet } from "react-router-dom";
 import "./App.css";
+import { Button } from "./components/ui/button";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function Home() {
     <div>
       <h2>Home</h2>
       <p>Welcome to the Lesson Scheduler application</p>
+      <Button>Explore</Button>
     </div>
   );
 }
