@@ -1,10 +1,10 @@
 import { useState, useEffect, Fragment } from "react";
 import { LessonDialog, type LessonInfo, type ScheduleCell } from "@/components/LessonDialog";
-import { fetchTeachingSchedule, type TeachingScheduleDetail } from "@/lib/api";
+import { fetchTeachingSchedule, fetchClasses, type TeachingScheduleDetail, type ClassItem } from "@/lib/api";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Filter } from "lucide-react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_ABBREVIATIONS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -95,11 +95,35 @@ export default function TeachingSchedule() {
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set());
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
 
   // Update week dates when selected date changes
   useEffect(() => {
     setWeekDates(getWeekDatesFromDate(selectedDate));
   }, [selectedDate]);
+
+  // Fetch classes for filter
+  useEffect(() => {
+    const loadClasses = async () => {
+      setIsLoadingClasses(true);
+      try {
+        // TODO: Replace with actual filter values from props or context
+        const response = await fetchClasses({
+          schoolLevelCode: "03",
+          schoolYearId: "6570c704-45a0-11ef-82f8-fa163e7dd11b",
+        });
+        setClasses(response.items);
+      } catch (error) {
+        console.error("Failed to fetch classes:", error);
+      } finally {
+        setIsLoadingClasses(false);
+      }
+    };
+    loadClasses();
+  }, []);
 
   const handleCellClick = (day: string, session: string, period: number) => {
     setSelectedCell({ day, session, period });
@@ -122,8 +146,31 @@ export default function TeachingSchedule() {
     return `${day}-${session}-${period}`;
   };
 
-  const getCellLesson = (day: string, session: string, period: number) => {
-    return schedule[getCellKey(day, session, period)];
+  const getCellLesson = (day: string, session: string, period: number): LessonInfo | undefined => {
+    const lesson = schedule[getCellKey(day, session, period)];
+    // Filter by selected classes
+    if (selectedClasses.size > 0 && lesson) {
+      if (!lesson.class || !selectedClasses.has(lesson.class)) {
+        return undefined; // Hide this cell if class doesn't match filter
+      }
+    }
+    return lesson;
+  };
+
+  const toggleClassFilter = (className: string) => {
+    setSelectedClasses((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(className)) {
+        newSet.delete(className);
+      } else {
+        newSet.add(className);
+      }
+      return newSet;
+    });
+  };
+
+  const clearClassFilter = () => {
+    setSelectedClasses(new Set());
   };
 
   // Handle date selection from calendar
@@ -227,8 +274,80 @@ export default function TeachingSchedule() {
       <div className="p-4 mb-4">
         <h1 className="text-3xl font-bold text-center mb-4">Teaching Schedule</h1>
 
-        {/* Week Selector */}
+        {/* Filters and Week Selector */}
         <div className="flex items-center justify-center gap-4 mb-4">
+          {/* Class Filter */}
+          <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2 w-[160px] justify-center relative">
+                <Filter className="h-4 w-4 shrink-0" />
+                <span className="truncate">Filter by Class</span>
+                {selectedClasses.size > 0 && (
+                  <span className="bg-blue-500 text-white rounded-full px-2 py-0.5 text-xs shrink-0">
+                    {selectedClasses.size}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" align="start">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-sm">Filter by Class</h4>
+                  {selectedClasses.size > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearClassFilter} className="h-7 text-xs">
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                {isLoadingClasses ? (
+                  <div className="text-sm text-gray-500 py-2">Loading classes...</div>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto space-y-1">
+                    {classes.map((classItem) => {
+                      const isSelected = selectedClasses.has(classItem.className);
+                      return (
+                        <button
+                          key={classItem.id}
+                          type="button"
+                          onClick={() => toggleClassFilter(classItem.className)}
+                          className={`
+                            w-full text-left px-3 py-2 rounded-md text-sm transition-colors
+                            ${isSelected ? "bg-blue-100 text-blue-900 font-medium" : "hover:bg-gray-100 text-gray-700"}
+                          `}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`
+                                w-4 h-4 border-2 rounded flex items-center justify-center
+                                ${isSelected ? "bg-blue-500 border-blue-500" : "border-gray-300"}
+                              `}
+                            >
+                              {isSelected && (
+                                <svg
+                                  className="w-3 h-3 text-white"
+                                  fill="none"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                            <span>{classItem.className}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Week Selector */}
           <Button onClick={handlePreviousWeek} variant="outline" aria-label="Previous week">
             ← Prev
           </Button>
@@ -302,7 +421,12 @@ export default function TeachingSchedule() {
                 >
                   {lesson && (
                     <div className="text-xs space-y-1">
-                      {lesson.lesson && <div className="font-semibold text-gray-800 line-clamp-2">{lesson.lesson}</div>}
+                      {lesson.lesson && (
+                        <div className="font-semibold text-gray-800 line-clamp-2">
+                          {lesson.lessonPeriod !== undefined && `${lesson.lessonPeriod} - `}
+                          {lesson.lesson}
+                        </div>
+                      )}
                       {lesson.class && <div className="text-gray-600">Class: {lesson.class}</div>}
                     </div>
                   )}
