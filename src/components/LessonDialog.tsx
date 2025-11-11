@@ -47,10 +47,10 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
   const [lessons, setLessons] = useState<CurriculumItem[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
-  const [isLoadingLatestLecture, setIsLoadingLatestLecture] = useState(false);
+  const [isLoadingPreviousLecture, setIsLoadingPreviousLecture] = useState(false);
   const [classError, setClassError] = useState<string | null>(null);
   const [lessonError, setLessonError] = useState<string | null>(null);
-  const [latestLecture, setLatestLecture] = useState<TeachingScheduleDetail | null>(null);
+  const [previousLecture, setPreviousLecture] = useState<TeachingScheduleDetail | null>(null);
   const hasInitializedRef = useRef(false);
 
   // Helper function to normalize session number
@@ -196,8 +196,8 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
           setIsLoadingLessons(false);
         });
 
-      // Fetch latest lecture for the selected class
-      setIsLoadingLatestLecture(true);
+      // Fetch previous lecture for the selected class
+      setIsLoadingPreviousLecture(true);
       // Calculate date range: 2 weeks (previous week Monday to current week Sunday)
       const today = new Date();
       const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -335,7 +335,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
           });
 
           if (classLectures.length > 0) {
-            // Sort by dateStudy, then by session, then by period to get the latest
+            // Sort by dateStudy, then by session, then by period to get the previous
             const sortedLectures = classLectures.sort((a: TeachingScheduleDetail, b: TeachingScheduleDetail) => {
               const dateA = new Date(a.dateStudy).getTime();
               const dateB = new Date(b.dateStudy).getTime();
@@ -359,18 +359,18 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
               return (b.period || 0) - (a.period || 0);
             });
 
-            const latest = sortedLectures[0];
+            const previous = sortedLectures[0];
             // API provides period number directly in the "period" field
-            setLatestLecture(latest);
+            setPreviousLecture(previous);
           } else {
-            setLatestLecture(null);
+            setPreviousLecture(null);
           }
-          setIsLoadingLatestLecture(false);
+          setIsLoadingPreviousLecture(false);
         })
         .catch((error: unknown) => {
-          console.error("Failed to fetch latest lecture:", error);
-          setLatestLecture(null);
-          setIsLoadingLatestLecture(false);
+          console.error("Failed to fetch previous lecture:", error);
+          setPreviousLecture(null);
+          setIsLoadingPreviousLecture(false);
         });
     }
   }, [isOpen, selectedClassId, classes, initialData, cellInfo]);
@@ -471,17 +471,17 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
             {lessonError && <p className="text-sm text-red-600">{lessonError}</p>}
           </div>
 
-          {/* Latest Lecture Section */}
+          {/* Previous Lecture Section */}
           {selectedClassId && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Latest Lecture</label>
-              {isLoadingLatestLecture ? (
-                <div className="text-sm text-gray-500 p-3">Loading latest lecture...</div>
-              ) : latestLecture ? (
+              <label className="text-sm font-medium">Previous Lecture</label>
+              {isLoadingPreviousLecture ? (
+                <div className="text-sm text-gray-500 p-3">Loading previous lecture...</div>
+              ) : previousLecture ? (
                 <div className="flex gap-3 p-3 border border-gray-300 rounded-md bg-gray-50">
                   {/* Left: Calendar-style date */}
                   {(() => {
-                    const { day, month } = formatDate(latestLecture.dateStudy);
+                    const { day, month } = formatDate(previousLecture.dateStudy);
                     return (
                       <div className="shrink-0 w-16 h-16 bg-white border-2 border-gray-300 rounded-md flex flex-col items-center justify-center shadow-sm">
                         <div className="text-2xl font-bold text-gray-800">{day}</div>
@@ -493,18 +493,18 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
                   {/* Right: Details */}
                   <div className="flex-1 flex flex-col justify-center space-y-1">
                     <div className="text-sm font-semibold text-gray-800">
-                      {latestLecture.className} - {getSessionName(latestLecture.section, latestLecture.dateStudy)} -
-                      Period {latestLecture.period}
+                      {previousLecture.className} - {getSessionName(previousLecture.section, previousLecture.dateStudy)}{" "}
+                      - Period {previousLecture.period}
                     </div>
                     <div className="text-xs text-gray-600">
-                      {formatPeriodNumber(latestLecture.distributeProgramPeriod)} -{" "}
-                      {latestLecture.distributeProgramName}
+                      {formatPeriodNumber(previousLecture.distributeProgramPeriod)} -{" "}
+                      {previousLecture.distributeProgramName}
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 p-3 border border-gray-300 rounded-md bg-gray-50">
-                  No latest lecture found
+                  No previous lecture found
                 </div>
               )}
             </div>
