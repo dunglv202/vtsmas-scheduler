@@ -93,66 +93,63 @@ export default function TeachingSchedule() {
   });
 
   return (
-    <div className="h-full flex flex-col w-full">
-      <div className="p-4 border-b bg-white shrink-0">
-        <h1 className="text-2xl font-bold">Teaching Schedule</h1>
+    <div className="w-full">
+      <div className="p-4 mb-4">
+        <h1 className="text-4xl font-bold text-center">Teaching Schedule</h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden w-full">
-        <div className="grid grid-cols-8 w-full">
-          {/* Sticky header row */}
-          <div className="bg-gray-100 p-3 font-semibold text-center border-r border-b border-gray-300 sticky top-0 z-10 shadow-sm">
-            Time
-          </div>
-          {DAYS.map((day, index) => {
-            const date = weekDates[index];
-            return (
-              <div
-                key={day}
-                className="bg-gray-100 p-3 font-semibold text-center border-r border-b border-gray-300 sticky top-0 z-10 shadow-sm last:border-r-0"
-              >
-                <div className="text-sm">{DAY_ABBREVIATIONS[index]}</div>
-                <div className="text-xs text-gray-600 mt-1">{formatDate(date)}</div>
-              </div>
-            );
-          })}
-
-          {/* Grid cells */}
-          {rows.map((row, rowIndex) => (
-            <Fragment key={`row-${rowIndex}`}>
-              {/* Row label (first column) */}
-              <div className="bg-gray-50 p-2 text-sm text-center border-r border-b border-gray-300 font-medium sticky left-0 z-5">
-                {row.lecture === 1 && <div className="font-semibold text-gray-700">{row.period}</div>}
-                <div className="text-xs text-gray-600">L{row.lecture}</div>
-              </div>
-
-              {/* Day cells */}
-              {DAYS.map((day, dayIndex) => {
-                const lesson = getCellLesson(day, row.period, row.lecture);
-                return (
-                  <div
-                    key={`${day}-${rowIndex}`}
-                    onClick={() => handleCellClick(day, row.period, row.lecture)}
-                    className={`
-                      p-2 min-h-[80px] border-r border-b border-gray-300 cursor-pointer
-                      hover:bg-blue-50 transition-colors
-                      ${lesson ? "bg-blue-100" : "bg-white"}
-                      ${dayIndex === DAYS.length - 1 ? "border-r-0" : ""}
-                    `}
-                  >
-                    {lesson && (
-                      <div className="text-xs space-y-1">
-                        {lesson.subject && <div className="font-semibold text-gray-800">{lesson.subject}</div>}
-                        {lesson.class && <div className="text-gray-600">Class: {lesson.class}</div>}
-                        {lesson.room && <div className="text-gray-600">Room: {lesson.room}</div>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </Fragment>
-          ))}
+      <div className="grid grid-cols-8 w-full">
+        <div className="bg-gray-100 p-3 font-semibold text-center border-r border-b border-gray-300 sticky top-0 z-10">
+          Time
         </div>
+        {DAYS.map((day, index) => {
+          const date = weekDates[index];
+          return (
+            <div
+              key={day}
+              className="bg-gray-100 p-3 font-semibold text-center border-r border-b border-gray-300 sticky top-0 z-10 last:border-r-0"
+            >
+              <div className="text-sm">{DAY_ABBREVIATIONS[index]}</div>
+              <div className="text-xs text-gray-600 mt-1">{formatDate(date)}</div>
+            </div>
+          );
+        })}
+
+        {/* Grid cells */}
+        {rows.map((row, rowIndex) => (
+          <Fragment key={`row-${rowIndex}`}>
+            {/* Row label (first column) */}
+            <div className="bg-gray-50 p-2 text-sm text-center border-r border-b border-gray-300 font-medium sticky left-0 z-5">
+              {row.lecture === 1 && <div className="font-semibold text-gray-700">{row.period}</div>}
+              <div className="text-xs text-gray-600">L{row.lecture}</div>
+            </div>
+
+            {/* Day cells */}
+            {DAYS.map((day, dayIndex) => {
+              const lesson = getCellLesson(day, row.period, row.lecture);
+              return (
+                <div
+                  key={`${day}-${rowIndex}`}
+                  onClick={() => handleCellClick(day, row.period, row.lecture)}
+                  className={`
+                    p-2 min-h-[80px] border-r border-b border-gray-300 cursor-pointer
+                    hover:bg-blue-50 transition-colors
+                    ${lesson ? "bg-blue-100" : "bg-white"}
+                    ${dayIndex === DAYS.length - 1 ? "border-r-0" : ""}
+                  `}
+                >
+                  {lesson && (
+                    <div className="text-xs space-y-1">
+                      {lesson.subject && <div className="font-semibold text-gray-800">{lesson.subject}</div>}
+                      {lesson.class && <div className="text-gray-600">Class: {lesson.class}</div>}
+                      {lesson.room && <div className="text-gray-600">Room: {lesson.room}</div>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </Fragment>
+        ))}
       </div>
 
       {/* Dialog for editing lesson */}

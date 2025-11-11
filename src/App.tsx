@@ -1,4 +1,4 @@
-import { Routes, Route, Outlet } from "react-router-dom";
+import { Outlet, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { Button } from "./components/ui/button";
 import TeachingSchedule from "./pages/TeachingSchedule";
@@ -14,25 +14,16 @@ function App() {
   );
 }
 
-// Layout component với Outlet
 function Layout() {
   return (
-    <div className="h-screen flex flex-col">
-      <header className="border-b shrink-0">
-        <div className="px-4 py-2">
-          <h1 className="text-xl font-bold">Lesson Scheduler</h1>
-          <nav>{/* Navigation links có thể thêm ở đây */}</nav>
-        </div>
-      </header>
-      <main className="flex-1 overflow-hidden w-full">
-        {/* Outlet sẽ render các route con tại đây */}
+    <div>
+      <main className="p-8">
         <Outlet />
       </main>
     </div>
   );
 }
 
-// Component Home mẫu
 function Home() {
   return (
     <div>
