@@ -471,9 +471,9 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Class</label>
             {isLoadingClasses ? (
-              <div className="text-sm text-gray-500">Loading classes...</div>
+              <div className="text-sm text-muted-foreground">Loading classes...</div>
             ) : classError ? (
-              <div className="text-sm text-red-600">{classError}</div>
+              <div className="text-sm text-destructive">{classError}</div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {classes.map((classItem) => (
@@ -486,12 +486,12 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
                       setSelectedClassId(classItem.id);
                     }}
                     className={`
-                      flex-1 min-w-[100px] px-4 py-2 border-2 rounded-md cursor-pointer text-center
+                      flex-1 min-w-[100px] px-4 py-2 border-2 rounded-md cursor-pointer text-center text-sm
                       transition-all duration-200
                       ${
                         selectedClassId === classItem.id
-                          ? "bg-blue-500 text-white border-blue-500 font-semibold"
-                          : "bg-white text-gray-700 border-gray-300 hover:border-blue-300 hover:bg-blue-50"
+                          ? "bg-primary text-primary-foreground border-primary font-semibold"
+                          : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-accent"
                       }
                     `}
                   >
@@ -512,7 +512,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
               value={selectedLesson}
               onChange={(e) => setSelectedLesson(e.target.value)}
               disabled={isLoadingLessons || !selectedClassId}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background disabled:bg-muted disabled:cursor-not-allowed"
             >
               <option value="">
                 {!selectedClassId
@@ -527,7 +527,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
                 </option>
               ))}
             </select>
-            {lessonError && <p className="text-sm text-red-600">{lessonError}</p>}
+            {lessonError && <p className="text-sm text-destructive">{lessonError}</p>}
           </div>
 
           {/* Previous Lecture Section */}
@@ -535,34 +535,34 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
             <div className="space-y-2">
               <label className="text-sm font-medium">Previous Lecture</label>
               {isLoadingPreviousLecture ? (
-                <div className="text-sm text-gray-500 p-3">Loading previous lecture...</div>
+                <div className="text-sm text-muted-foreground p-3">Loading previous lecture...</div>
               ) : previousLecture ? (
-                <div className="flex gap-3 p-3 border border-gray-300 rounded-md bg-gray-50">
+                <div className="flex gap-3 p-3 border border-border rounded-md bg-muted">
                   {/* Left: Calendar-style date */}
                   {(() => {
                     const { day, month } = formatDate(previousLecture.dateStudy);
                     return (
-                      <div className="shrink-0 w-16 h-16 bg-white border-2 border-gray-300 rounded-md flex flex-col items-center justify-center shadow-sm">
-                        <div className="text-2xl font-bold text-gray-800">{day}</div>
-                        <div className="text-xs font-semibold text-gray-600 uppercase">{month}</div>
+                      <div className="shrink-0 w-16 h-16 bg-background border-2 border-border rounded-md flex flex-col items-center justify-center shadow-sm">
+                        <div className="text-2xl font-bold text-foreground">{day}</div>
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">{month}</div>
                       </div>
                     );
                   })()}
 
                   {/* Right: Details */}
                   <div className="flex-1 flex flex-col justify-center space-y-1">
-                    <div className="text-sm font-semibold text-gray-800">
+                    <div className="text-sm font-semibold text-foreground">
                       {previousLecture.className} - {getSessionName(previousLecture.section, previousLecture.dateStudy)}{" "}
                       - Period {previousLecture.period}
                     </div>
-                    <div className="text-xs text-gray-600">
+                    <div className="text-xs text-muted-foreground">
                       {formatPeriodNumber(previousLecture.distributeProgramPeriod)} -{" "}
                       {previousLecture.distributeProgramName}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-gray-500 p-3 border border-gray-300 rounded-md bg-gray-50">
+                <div className="text-sm text-muted-foreground p-3 border border-border rounded-md bg-muted">
                   No previous lecture found
                 </div>
               )}
@@ -578,7 +578,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+              className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background min-h-[100px]"
               placeholder="Additional notes (optional)"
               spellCheck={false}
             />
