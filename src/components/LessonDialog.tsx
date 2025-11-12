@@ -460,7 +460,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]" onOpenAutoFocus={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{getDialogTitle()}</DialogTitle>
           <DialogDescription>Fill in the lesson information for this time slot.</DialogDescription>
@@ -471,7 +471,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Class</label>
             {isLoadingClasses ? (
-              <div className="text-sm text-muted-foreground">Loading classes...</div>
+              <div className="h-21.5 w-full bg-muted rounded-md animate-pulse" />
             ) : classError ? (
               <div className="text-sm text-destructive">{classError}</div>
             ) : (
@@ -511,7 +511,6 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
               id="lesson"
               value={selectedLesson}
               onChange={(e) => setSelectedLesson(e.target.value)}
-              disabled={isLoadingLessons || !selectedClassId}
               className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background disabled:bg-muted disabled:cursor-not-allowed"
             >
               <option value="">
@@ -535,7 +534,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
             <div className="space-y-2">
               <label className="text-sm font-medium">Previous Lecture</label>
               {isLoadingPreviousLecture ? (
-                <div className="text-sm text-muted-foreground p-3">Loading previous lecture...</div>
+                <div className="h-22.5 w-full bg-muted rounded-md animate-pulse" />
               ) : previousLecture ? (
                 <div className="flex gap-3 p-3 border border-border rounded-md bg-muted">
                   {/* Left: Calendar-style date */}
