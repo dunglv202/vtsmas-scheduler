@@ -449,6 +449,7 @@ export default function TeachingSchedule() {
           selectedCell ? getCellLesson(selectedCell.day, selectedCell.session, selectedCell.period) : undefined
         }
         cellInfo={selectedCell}
+        weekDates={weekDates}
       />
     </div>
   );

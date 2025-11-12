@@ -351,3 +351,97 @@ export async function fetchTeachingSchedule(
 
   return JSON.parse(responseText) as TeachingScheduleResponse;
 }
+
+export interface LessonFeedbackRequest {
+  schoolYearId: string;
+  schoolLevelCode: string;
+  classId: string;
+  dateFrom: string;
+  dateTo: string;
+  dateStudy: string;
+}
+
+export interface LessonFeedbackStudent {
+  studentId: string;
+  studentName: string;
+  name: string;
+}
+
+export interface LessonFeedbackDetail {
+  id: string;
+  creatorId: string;
+  schoolYearId: string;
+  schoolYearCode: string;
+  schoolLevelCode: string;
+  lessonAssessmentBookId: string;
+  classId: string;
+  className: string;
+  dayOfWeek: number;
+  section: number;
+  dateStudy: string;
+  period: number;
+  subjectName: string;
+  subjectCode: string;
+  distributeProgramName: string;
+  distributeProgramPeriod: number;
+  divisiveConfigurationId: string | null;
+  divisiveConfigurationName: string | null;
+  status: number;
+  studentSkipCount: number;
+  studentNames: LessonFeedbackStudent[];
+  teachingAssignmentId: string;
+  teachingAssignmentName: string;
+  configLessonAssessmentBookId: string;
+  teachingComment: string;
+  userFullName: string;
+}
+
+export interface LessonFeedbackResponse {
+  id: string;
+  classId: string;
+  className: string;
+  schoolYearId: string;
+  schoolYearCode: string;
+  schoolLevelCode: string;
+  dateFrom: string;
+  dateTo: string;
+  weeklyValue: string | null;
+  lessonAssessmentBookDetails: LessonFeedbackDetail[];
+}
+
+export async function fetchLessonFeedback(
+  payload: LessonFeedbackRequest
+): Promise<LessonFeedbackResponse | null> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const response = await fetch("https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/theo-ngay", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tokens.access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    if (response.status === 204) {
+      return null;
+    }
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch lecture feedback: ${response.status} ${response.statusText}. ${errorText}`);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+  if (!text.trim()) {
+    return null;
+  }
+
+  return JSON.parse(text) as LessonFeedbackResponse;
+}

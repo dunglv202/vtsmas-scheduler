@@ -13,12 +13,15 @@ import {
   fetchClasses,
   fetchTeachingSchedule,
   fetchSubjects,
+  fetchLessonFeedback,
   type CurriculumItem,
   type ClassItem,
   type TeachingScheduleDetail,
   type TeachingScheduleResponse,
   type SubjectItem,
+  type LessonFeedbackDetail,
 } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export interface LessonInfo {
   lesson?: string;
@@ -42,9 +45,12 @@ interface LessonDialogProps {
   onSave: (lessonInfo: LessonInfo) => void;
   initialData?: LessonInfo;
   cellInfo: ScheduleCell | null;
+  weekDates?: Date[];
 }
 
-export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }: LessonDialogProps) {
+const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+
+export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, weekDates }: LessonDialogProps) {
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedLesson, setSelectedLesson] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -56,10 +62,13 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
   const [isLoadingPreviousLecture, setIsLoadingPreviousLecture] = useState(false);
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [classError, setClassError] = useState<string | null>(null);
   const [lessonError, setLessonError] = useState<string | null>(null);
   const [subjectError, setSubjectError] = useState<string | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [previousLecture, setPreviousLecture] = useState<TeachingScheduleDetail | null>(null);
+  const [feedback, setFeedback] = useState<LessonFeedbackDetail | null>(null);
   const hasInitializedRef = useRef(false);
   const hasInitializedSubjectRef = useRef(false);
   const previousInitialDataRef = useRef<LessonInfo | undefined>(undefined);
@@ -156,6 +165,11 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
       setSubjects([]);
       setSubjectError(null);
       setIsLoadingSubjects(false);
+      setFeedback(null);
+      setFeedbackError(null);
+      setIsLoadingFeedback(false);
+      setPreviousLecture(null);
+      setIsLoadingPreviousLecture(false);
     }
   }, [isOpen, initialData]);
 
@@ -275,12 +289,6 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
 
             if (matchedLesson) {
               setSelectedLesson(matchedLesson.id);
-            } else {
-              console.log("Lesson not found for autofill:", {
-                initialDataLesson: initialData.lesson,
-                initialDataLessonPeriod: initialData.lessonPeriod,
-                availableLessons: response.items.map((l) => `${l.period} - ${l.name}`),
-              });
             }
           }
         }
@@ -299,23 +307,18 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
       return;
     }
 
-    setIsLoadingPreviousLecture(true);
-
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const currentWeekMonday = new Date(today);
-    currentWeekMonday.setDate(today.getDate() + mondayOffset);
-
-    const currentWeekSunday = new Date(currentWeekMonday);
-    currentWeekSunday.setDate(currentWeekMonday.getDate() + 6);
-
-    const previousWeekMonday = new Date(currentWeekMonday);
-    previousWeekMonday.setDate(currentWeekMonday.getDate() - 7);
-
-    const previousWeekSunday = new Date(previousWeekMonday);
-    previousWeekSunday.setDate(previousWeekMonday.getDate() + 6);
+    const getWeekRange = (date: Date) => {
+      const d = new Date(date);
+      const dayOfWeek = d.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() + mondayOffset);
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      return { monday, sunday };
+    };
 
     const formatDateForAPI = (date: Date): string => {
       const year = date.getFullYear();
@@ -324,28 +327,50 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
       return `${year}-${month}-${day}`;
     };
 
-    const previousWeekFrom = formatDateForAPI(previousWeekMonday);
-    const previousWeekTo = formatDateForAPI(previousWeekSunday);
-    const currentWeekFrom = formatDateForAPI(currentWeekMonday);
-    const currentWeekTo = formatDateForAPI(currentWeekSunday);
+    const baseWeek =
+      weekDates && weekDates.length >= 7
+        ? {
+            monday: new Date(weekDates[0].getFullYear(), weekDates[0].getMonth(), weekDates[0].getDate(), 0, 0, 0, 0),
+            sunday: new Date(
+              weekDates[6].getFullYear(),
+              weekDates[6].getMonth(),
+              weekDates[6].getDate(),
+              23,
+              59,
+              59,
+              999
+            ),
+          }
+        : getWeekRange(new Date());
+
+    setIsLoadingPreviousLecture(true);
+
+    const previousWeekStart = new Date(baseWeek.monday);
+    previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+    previousWeekStart.setHours(0, 0, 0, 0);
+    const previousWeekEnd = new Date(previousWeekStart);
+    previousWeekEnd.setDate(previousWeekStart.getDate() + 6);
+    previousWeekEnd.setHours(23, 59, 59, 999);
+
+    const previousWeekFrom = formatDateForAPI(previousWeekStart);
+    const previousWeekTo = formatDateForAPI(previousWeekEnd);
+    const currentWeekFrom = formatDateForAPI(baseWeek.monday);
+    const currentWeekTo = formatDateForAPI(baseWeek.sunday);
 
     let cellDate: Date | null = null;
     let cellSession: number | null = null;
     if (cellInfo) {
-      const dayNameToIndex: Record<string, number> = {
-        Monday: 0,
-        Tuesday: 1,
-        Wednesday: 2,
-        Thursday: 3,
-        Friday: 4,
-        Saturday: 5,
-        Sunday: 6,
-      };
-      const cellDayIndex = dayNameToIndex[cellInfo.day];
-      if (cellDayIndex !== undefined) {
-        cellDate = new Date(currentWeekMonday);
-        cellDate.setDate(currentWeekMonday.getDate() + cellDayIndex);
-        cellDate.setHours(23, 59, 59, 999);
+      const cellDayIndex = DAY_ORDER.indexOf(cellInfo.day as typeof DAY_ORDER[number]);
+      if (cellDayIndex >= 0) {
+        if (weekDates && weekDates[cellDayIndex]) {
+          const source = weekDates[cellDayIndex];
+          cellDate = new Date(source.getFullYear(), source.getMonth(), source.getDate(), 23, 59, 59, 999);
+        } else {
+          const fallback = new Date(baseWeek.monday);
+          fallback.setDate(baseWeek.monday.getDate() + cellDayIndex);
+          fallback.setHours(23, 59, 59, 999);
+          cellDate = fallback;
+        }
       }
 
       const sessionNameToNumber: Record<string, number> = {
@@ -447,7 +472,149 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
         setPreviousLecture(null);
         setIsLoadingPreviousLecture(false);
       });
-  }, [isOpen, selectedClassId, cellInfo]);
+  }, [isOpen, selectedClassId, cellInfo, weekDates]);
+
+  // Fetch lecture feedback matching the selected slot
+  useEffect(() => {
+    if (!isOpen || !selectedClassId || !selectedSubjectCode || !cellInfo) {
+      setFeedback(null);
+      setFeedbackError(null);
+      setIsLoadingFeedback(false);
+      return;
+    }
+
+    const selectedClass = classes.find((cls) => cls.id === selectedClassId);
+    if (!selectedClass) {
+      setFeedback(null);
+      setFeedbackError(null);
+      setIsLoadingFeedback(false);
+      return;
+    }
+
+    setIsLoadingFeedback(true);
+    setFeedbackError(null);
+    setFeedback(null);
+
+    const getWeekRange = (date: Date) => {
+      const d = new Date(date);
+      const dayOfWeek = d.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() + mondayOffset);
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      return { monday, sunday };
+    };
+
+    const formatDateForAPI = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const day = date.getDate().toString().padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    const sessionNameToNumber: Record<string, number> = {
+      Morning: 0,
+      Afternoon: 1,
+      Evening: 2,
+    };
+    const cellSession = sessionNameToNumber[cellInfo.session];
+
+    const dayNameToOffset: Record<string, number> = {
+      Monday: 0,
+      Tuesday: 1,
+      Wednesday: 2,
+      Thursday: 3,
+      Friday: 4,
+      Saturday: 5,
+      Sunday: 6,
+    };
+
+    const dayOffset = dayNameToOffset[cellInfo.day];
+    if (dayOffset === undefined) {
+      setFeedback(null);
+      setIsLoadingFeedback(false);
+      return;
+    }
+
+    const baseWeek =
+      weekDates && weekDates.length >= 7
+        ? {
+            monday: new Date(weekDates[0].getFullYear(), weekDates[0].getMonth(), weekDates[0].getDate(), 0, 0, 0, 0),
+            sunday: new Date(
+              weekDates[6].getFullYear(),
+              weekDates[6].getMonth(),
+              weekDates[6].getDate(),
+              23,
+              59,
+              59,
+              999
+            ),
+          }
+        : getWeekRange(new Date());
+
+    const cellDate =
+      weekDates && weekDates[dayOffset]
+        ? new Date(
+            weekDates[dayOffset].getFullYear(),
+            weekDates[dayOffset].getMonth(),
+            weekDates[dayOffset].getDate()
+          )
+        : (() => {
+            const fallback = new Date(baseWeek.monday);
+            fallback.setDate(baseWeek.monday.getDate() + dayOffset);
+            return fallback;
+          })();
+    cellDate.setHours(0, 0, 0, 0);
+
+    const cellWeek = getWeekRange(cellDate);
+    const dateStudy = formatDateForAPI(cellDate);
+    const dateFrom = formatDateForAPI(cellWeek.monday);
+    const dateTo = formatDateForAPI(cellWeek.sunday);
+
+    if (dateFrom && dateTo) {
+      fetchLessonFeedback({
+        schoolYearId: "6570c704-45a0-11ef-82f8-fa163e7dd11b",
+        schoolLevelCode: selectedClass.schoolLevelCode || "03",
+        classId: selectedClassId,
+        dateFrom,
+        dateTo,
+        dateStudy,
+      })
+        .then((response) => {
+          if (!response) {
+            setFeedback(null);
+            setIsLoadingFeedback(false);
+            return;
+          }
+
+          const matchedDetail = response.lessonAssessmentBookDetails.find((detail) => {
+            const detailDate = new Date(detail.dateStudy);
+            const detailDateISO = formatDateForAPI(detailDate);
+            return (
+              detail.subjectCode === selectedSubjectCode &&
+              detail.section === cellSession &&
+              detail.period === cellInfo.period &&
+              detailDateISO === dateStudy
+            );
+          });
+
+          setFeedback(matchedDetail ?? null);
+          setIsLoadingFeedback(false);
+        })
+        .catch((error) => {
+          console.error("Failed to fetch lecture feedback:", error);
+          setFeedback(null);
+          setFeedbackError(error instanceof Error ? error.message : "Failed to load lecture feedback");
+          setIsLoadingFeedback(false);
+        });
+    } else {
+      setFeedback(null);
+      setIsLoadingFeedback(false);
+    }
+  }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, classes, weekDates]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -478,166 +645,218 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
     return `${cellInfo.day} - ${cellInfo.session} - Period ${cellInfo.period}`;
   };
 
+  const shouldExpandDialog = Boolean(feedback);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]" onOpenAutoFocus={(event) => event.preventDefault()}>
+      <DialogContent
+        className={cn(
+          "sm:max-w-[500px]",
+          shouldExpandDialog && "sm:max-w-[1000px] md:max-w-[1100px]"
+        )}
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{getDialogTitle()}</DialogTitle>
           <DialogDescription>Fill in the lesson information for this time slot.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Class Selection - Radio buttons styled as rectangular buttons */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Class</label>
-            {isLoadingClasses ? (
-              <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
-            ) : classError ? (
-              <div className="text-sm text-destructive">{classError}</div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {classes.map((classItem) => (
-                  <button
-                    key={classItem.id}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setSelectedClassId(classItem.id);
-                    }}
-                    className={`
-                      flex-1 min-w-[100px] px-4 py-2 border-2 rounded-md cursor-pointer text-center text-sm
-                      transition-all duration-200
-                      ${
-                        selectedClassId === classItem.id
-                          ? "bg-primary text-primary-foreground border-primary font-semibold"
-                          : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-accent"
-                      }
-                    `}
-                  >
-                    {classItem.className}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Subject Selection */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Subject</label>
-            {isLoadingSubjects ? (
-              <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
-            ) : subjectError ? (
-              <div className="text-sm text-destructive">{subjectError}</div>
-            ) : (
-              <select
-                id="subject"
-                value={selectedSubjectCode}
-                onChange={(e) => setSelectedSubjectCode(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
-              >
-                <option value="">Select a subject</option>
-                {subjects.map((subject) => (
-                  <option key={subject.cateCode} value={subject.cateCode}>
-                    {subject.cateName}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Lesson Selection - Dropdown */}
-          <div className="space-y-2">
-            <label htmlFor="lesson" className="text-sm font-medium">
-              Lesson
-            </label>
-            <select
-              id="lesson"
-              value={selectedLesson}
-              onChange={(e) => setSelectedLesson(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background disabled:bg-muted disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {!selectedClassId
-                  ? "Select a class first"
-                  : !selectedSubjectCode
-                  ? "Select a subject first"
-                  : isLoadingLessons
-                  ? "Loading lessons..."
-                  : lessons.length > 0
-                  ? "Select a lesson"
-                  : "No lessons available"}
-              </option>
-              {lessons.map((lesson) => (
-                <option key={lesson.id} value={lesson.id}>
-                  {lesson.period} - {lesson.name}
-                </option>
-              ))}
-            </select>
-            {lessonError && <p className="text-sm text-destructive">{lessonError}</p>}
-          </div>
-
-          {/* Previous Lecture Section */}
-          {selectedClassId && (
+        <div
+          className={cn(
+            "md:grid md:gap-6",
+            shouldExpandDialog
+              ? "md:grid-cols-[minmax(0,1fr)_minmax(0,280px)]"
+              : "md:grid-cols-[minmax(0,1fr)]"
+          )}
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Class Selection - Radio buttons styled as rectangular buttons */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Previous Lecture</label>
-              {isLoadingPreviousLecture ? (
+              <label className="text-sm font-medium">Class</label>
+              {isLoadingClasses ? (
                 <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
-              ) : previousLecture ? (
-                <div className="flex gap-3 p-3 border border-border rounded-md bg-muted">
-                  {/* Left: Calendar-style date */}
-                  {(() => {
-                    const { day, month } = formatDate(previousLecture.dateStudy);
-                    return (
-                      <div className="shrink-0 w-16 h-16 bg-background border-2 border-border rounded-md flex flex-col items-center justify-center shadow-sm">
-                        <div className="text-2xl font-bold text-foreground">{day}</div>
-                        <div className="text-xs font-semibold text-muted-foreground uppercase">{month}</div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Right: Details */}
-                  <div className="flex-1 flex flex-col justify-center space-y-1">
-                    <div className="text-sm font-semibold text-foreground">
-                      {previousLecture.className} - {getSessionName(previousLecture.section, previousLecture.dateStudy)}{" "}
-                      - Period {previousLecture.period}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatPeriodNumber(previousLecture.distributeProgramPeriod)} -{" "}
-                      {previousLecture.distributeProgramName}
-                    </div>
-                  </div>
-                </div>
+              ) : classError ? (
+                <div className="text-sm text-destructive">{classError}</div>
               ) : (
-                <div className="text-sm text-muted-foreground p-3 border border-border rounded-md bg-muted">
-                  No previous lecture found
+                <div className="flex flex-wrap gap-2">
+                  {classes.map((classItem) => (
+                    <button
+                      key={classItem.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedClassId(classItem.id);
+                      }}
+                      className={`
+                        flex-1 min-w-[100px] px-4 py-2 border-2 rounded-md cursor-pointer text-center text-sm
+                        transition-all duration-200
+                        ${
+                          selectedClassId === classItem.id
+                            ? "bg-primary text-primary-foreground border-primary font-semibold"
+                            : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-accent"
+                        }
+                      `}
+                    >
+                      {classItem.className}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
+
+            {/* Subject Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Subject</label>
+              {isLoadingSubjects ? (
+                <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
+              ) : subjectError ? (
+                <div className="text-sm text-destructive">{subjectError}</div>
+              ) : (
+                <select
+                  id="subject"
+                  value={selectedSubjectCode}
+                  onChange={(e) => setSelectedSubjectCode(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+                >
+                  <option value="">Select a subject</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.cateCode} value={subject.cateCode}>
+                      {subject.cateName}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Lesson Selection - Dropdown */}
+            <div className="space-y-2">
+              <label htmlFor="lesson" className="text-sm font-medium">
+                Lesson
+              </label>
+              <select
+                id="lesson"
+                value={selectedLesson}
+                onChange={(e) => setSelectedLesson(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background disabled:bg-muted disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {!selectedClassId
+                    ? "Select a class first"
+                    : !selectedSubjectCode
+                    ? "Select a subject first"
+                    : isLoadingLessons
+                    ? "Loading lessons..."
+                    : lessons.length > 0
+                    ? "Select a lesson"
+                    : "No lessons available"}
+                </option>
+                {lessons.map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.period} - {lesson.name}
+                  </option>
+                ))}
+              </select>
+              {lessonError && <p className="text-sm text-destructive">{lessonError}</p>}
+            </div>
+
+            {/* Previous Lecture Section */}
+            {selectedClassId && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Previous Lecture</label>
+                {isLoadingPreviousLecture ? (
+                  <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
+                ) : previousLecture ? (
+                  <div className="flex gap-3 p-3 border border-border rounded-md bg-muted">
+                    {/* Left: Calendar-style date */}
+                    {(() => {
+                      const { day, month } = formatDate(previousLecture.dateStudy);
+                      return (
+                        <div className="shrink-0 w-16 h-16 bg-background border-2 border-border rounded-md flex flex-col items-center justify-center shadow-sm">
+                          <div className="text-2xl font-bold text-foreground">{day}</div>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase">{month}</div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Right: Details */}
+                    <div className="flex-1 flex flex-col justify-center space-y-1">
+                      <div className="text-sm font-semibold text-foreground">
+                        {previousLecture.className} - {getSessionName(previousLecture.section, previousLecture.dateStudy)}{" "}
+                        - Period {previousLecture.period}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatPeriodNumber(previousLecture.distributeProgramPeriod)} -{" "}
+                        {previousLecture.distributeProgramName}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground p-3 border border-border rounded-md bg-muted">
+                    No previous lecture found
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <label htmlFor="notes" className="text-sm font-medium">
+                Notes
+              </label>
+              <textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background min-h-[100px]"
+                placeholder="Additional notes (optional)"
+                spellCheck={false}
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">Save</Button>
+            </DialogFooter>
+          </form>
+
+          {shouldExpandDialog && (
+            <aside className="mt-4 space-y-4 md:mt-0">
+              <div className="rounded-md border border-border bg-card p-4">
+                <h3 className="text-sm font-semibold text-foreground">Lecture Feedback</h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Retrieved from the weekly lesson assessment book.
+                </p>
+                {isLoadingFeedback ? (
+                  <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
+                ) : feedbackError ? (
+                  <p className="text-sm text-destructive">{feedbackError}</p>
+                ) : feedback ? (
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <div className="font-medium text-foreground">
+                        Period {feedback.distributeProgramPeriod}
+                      </div>
+                      <div className="text-muted-foreground text-xs">
+                        {feedback.distributeProgramName}
+                      </div>
+                    </div>
+                    {feedback.teachingComment && (
+                      <div>
+                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Teacher&apos;s comment
+                        </div>
+                        <div className="text-sm text-foreground">{feedback.teachingComment}</div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            </aside>
           )}
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <label htmlFor="notes" className="text-sm font-medium">
-              Notes
-            </label>
-            <textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background min-h-[100px]"
-              placeholder="Additional notes (optional)"
-              spellCheck={false}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">Save</Button>
-          </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
