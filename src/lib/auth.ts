@@ -5,7 +5,7 @@ export interface TokenResponse {
   token_type?: string;
 }
 
-const TOKEN_STORAGE_KEY = "auth_tokens";
+export const TOKEN_STORAGE_KEY = "auth_tokens";
 
 export function getStoredTokens(): TokenResponse | null {
   try {
@@ -35,7 +35,10 @@ export function clearStoredTokens(): void {
   }
 }
 
-export async function login(username: string, password: string): Promise<TokenResponse> {
+export async function login(
+  username: string,
+  password: string
+): Promise<TokenResponse> {
   const formData = new URLSearchParams();
   formData.append("grant_type", "password");
   formData.append(
@@ -57,11 +60,12 @@ export async function login(username: string, password: string): Promise<TokenRe
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Login failed: ${response.status} ${response.statusText}. ${errorText}`);
+    throw new Error(
+      `Login failed: ${response.status} ${response.statusText}. ${errorText}`
+    );
   }
 
   const tokens: TokenResponse = await response.json();
   setStoredTokens(tokens);
   return tokens;
 }
-

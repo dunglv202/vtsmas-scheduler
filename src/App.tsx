@@ -1,5 +1,6 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import "./App.css";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import TeachingSchedule from "./pages/TeachingSchedule";
 
@@ -9,7 +10,9 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="teaching-schedule" element={<TeachingSchedule />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="teaching-schedule" element={<TeachingSchedule />} />
+        </Route>
       </Route>
     </Routes>
   );
