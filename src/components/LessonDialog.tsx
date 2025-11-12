@@ -12,16 +12,20 @@ import {
   fetchCurriculum,
   fetchClasses,
   fetchTeachingSchedule,
+  fetchSubjects,
   type CurriculumItem,
   type ClassItem,
   type TeachingScheduleDetail,
   type TeachingScheduleResponse,
+  type SubjectItem,
 } from "@/lib/api";
 
 export interface LessonInfo {
   lesson?: string;
   class?: string;
   description?: string;
+  subject?: string;
+  subjectCode?: string;
   lessonPeriod?: number; // distributeProgramPeriod from API
 }
 
@@ -44,15 +48,20 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedLesson, setSelectedLesson] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
+  const [selectedSubjectCode, setSelectedSubjectCode] = useState<string>(initialData?.subjectCode || "");
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [lessons, setLessons] = useState<CurriculumItem[]>([]);
+  const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
   const [isLoadingPreviousLecture, setIsLoadingPreviousLecture] = useState(false);
   const [classError, setClassError] = useState<string | null>(null);
   const [lessonError, setLessonError] = useState<string | null>(null);
+  const [subjectError, setSubjectError] = useState<string | null>(null);
   const [previousLecture, setPreviousLecture] = useState<TeachingScheduleDetail | null>(null);
   const hasInitializedRef = useRef(false);
+  const hasInitializedSubjectRef = useRef(false);
   const previousInitialDataRef = useRef<LessonInfo | undefined>(undefined);
 
   // Helper function to normalize session number
@@ -115,6 +124,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
       // Reset initialization flag when dialog opens or initialData changes
       if (previousInitialDataRef.current !== initialData) {
         hasInitializedRef.current = false;
+        hasInitializedSubjectRef.current = false;
         previousInitialDataRef.current = initialData;
       }
       setIsLoadingClasses(true);
@@ -136,11 +146,16 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
     } else {
       // Reset when dialog closes
       hasInitializedRef.current = false;
+      hasInitializedSubjectRef.current = false;
       previousInitialDataRef.current = undefined;
       setSelectedClassId("");
       setSelectedLesson("");
+      setSelectedSubjectCode("");
       setNotes("");
       setLessons([]);
+      setSubjects([]);
+      setSubjectError(null);
+      setIsLoadingSubjects(false);
     }
   }, [isOpen, initialData]);
 
@@ -162,282 +177,277 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
     }
   }, [isOpen, initialData, classes]);
 
-  // Fetch lessons when a class is selected
+  // Fetch subjects when dialog opens
   useEffect(() => {
-    if (isOpen && selectedClassId && classes.length > 0) {
-      setIsLoadingLessons(true);
-      setLessonError(null);
-      setLessons([]);
-      // Reset lesson selection when class changes
-      // It will be restored from initialData after lessons load if applicable
-      setSelectedLesson("");
-
-      // Find the selected class to get gradeCode
-      const selectedClass = classes.find((cls) => cls.id === selectedClassId);
-      if (!selectedClass) {
-        setIsLoadingLessons(false);
-        return;
-      }
-
-      // TODO: Replace with actual filter values from props or context
-      // For now, using example values from the API documentation
-      const schoolYearId = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
-      fetchCurriculum({
-        subjectCode: "22",
-        gradeCode: selectedClass.gradeLevelCode,
-        classId: selectedClassId,
-        schoolYearId,
-      })
-        .then((response) => {
-          setLessons(response.items);
-          setIsLoadingLessons(false);
-
-          // After lessons are loaded, match the saved lesson if initialData exists
-          // Only match if the selected class matches the class from initialData
-          if (initialData?.class) {
-            const selectedClass = classes.find((cls) => cls.id === selectedClassId);
-            // Only autofill lesson if the selected class matches initialData class
-            if (selectedClass && selectedClass.className === initialData.class) {
-              let matchedLesson = null;
-
-              // First, try matching by lesson period number (most reliable)
-              if (initialData.lessonPeriod !== undefined) {
-                matchedLesson = response.items.find((lesson) => lesson.period === initialData.lessonPeriod);
-              }
-
-              // If not found by period, fall back to name matching
-              if (!matchedLesson && initialData.lesson) {
-                // Normalize strings for comparison (trim and lowercase)
-                const normalize = (str: string) => str.trim().toLowerCase();
-                const normalizedInitialLesson = normalize(initialData.lesson);
-
-                matchedLesson = response.items.find((lesson) => {
-                  const normalizedLessonName = normalize(lesson.name);
-
-                  // Try matching with period prefix first (format: "X - Lesson Name")
-                  const displayName = `${lesson.period} - ${lesson.name}`;
-                  if (normalize(displayName) === normalizedInitialLesson) {
-                    return true;
-                  }
-                  // Also try matching just the name (for lessons from API that don't have period prefix)
-                  // This handles cases where initialData.lesson is just "Lesson Name" from distributeProgramName
-                  if (normalizedLessonName === normalizedInitialLesson) {
-                    return true;
-                  }
-                  // Try partial matching (in case of slight differences)
-                  // Check if initialData.lesson contains the lesson name or vice versa
-                  if (
-                    normalizedLessonName &&
-                    (normalizedInitialLesson.includes(normalizedLessonName) ||
-                      normalizedLessonName.includes(normalizedInitialLesson))
-                  ) {
-                    return true;
-                  }
-                  return false;
-                });
-              }
-
-              if (matchedLesson) {
-                setSelectedLesson(matchedLesson.id);
-              } else {
-                // Debug: log when lesson is not found
-                console.log("Lesson not found for autofill:", {
-                  initialDataLesson: initialData.lesson,
-                  initialDataLessonPeriod: initialData.lessonPeriod,
-                  availableLessons: response.items.map((l) => `${l.period} - ${l.name}`),
-                });
+    if (isOpen) {
+      setIsLoadingSubjects(true);
+      setSubjectError(null);
+      fetchSubjects("03")
+        .then((items) => {
+          setSubjects(items);
+          if (!hasInitializedSubjectRef.current) {
+            let initialSubjectCode = initialData?.subjectCode || "";
+            if (!initialSubjectCode && initialData?.subject) {
+              const matchedSubject = items.find(
+                (subject) => subject.cateName === initialData.subject || subject.acronymName === initialData.subject
+              );
+              if (matchedSubject) {
+                initialSubjectCode = matchedSubject.cateCode;
               }
             }
+            setSelectedSubjectCode(initialSubjectCode);
+            hasInitializedSubjectRef.current = true;
           }
+          setIsLoadingSubjects(false);
         })
         .catch((error) => {
-          setLessonError(error instanceof Error ? error.message : "Failed to load lessons");
-          setIsLoadingLessons(false);
+          setSubjectError(error instanceof Error ? error.message : "Failed to load subjects");
+          setIsLoadingSubjects(false);
         });
+    }
+  }, [isOpen, initialData]);
 
-      // Fetch previous lecture for the selected class
-      setIsLoadingPreviousLecture(true);
-      // Calculate date range: 2 weeks (previous week Monday to current week Sunday)
-      const today = new Date();
-      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  // Fetch lessons when class and subject are selected
+  useEffect(() => {
+    if (!isOpen || !selectedClassId || !selectedSubjectCode) {
+      setLessons([]);
+      setSelectedLesson("");
+      setIsLoadingLessons(false);
+      return;
+    }
 
-      // Calculate Monday of current week
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const currentWeekMonday = new Date(today);
-      currentWeekMonday.setDate(today.getDate() + mondayOffset);
+    const selectedClass = classes.find((cls) => cls.id === selectedClassId);
+    if (!selectedClass) {
+      setLessons([]);
+      setSelectedLesson("");
+      setIsLoadingLessons(false);
+      return;
+    }
 
-      // Calculate Sunday of current week (6 days after Monday)
-      const currentWeekSunday = new Date(currentWeekMonday);
-      currentWeekSunday.setDate(currentWeekMonday.getDate() + 6);
+    setIsLoadingLessons(true);
+    setLessonError(null);
+    setLessons([]);
+    setSelectedLesson("");
 
-      // Calculate Monday of previous week (7 days before current week Monday)
-      const previousWeekMonday = new Date(currentWeekMonday);
-      previousWeekMonday.setDate(currentWeekMonday.getDate() - 7);
+    const schoolYearId = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
+    fetchCurriculum({
+      subjectCode: selectedSubjectCode,
+      gradeCode: selectedClass.gradeLevelCode,
+      classId: selectedClassId,
+      schoolYearId,
+    })
+      .then((response) => {
+        setLessons(response.items);
+        setIsLoadingLessons(false);
 
-      // Calculate Sunday of previous week (6 days after previous week Monday)
-      const previousWeekSunday = new Date(previousWeekMonday);
-      previousWeekSunday.setDate(previousWeekMonday.getDate() + 6);
+        if (initialData?.class) {
+          const matchedClass = classes.find((cls) => cls.id === selectedClassId);
+          if (matchedClass && matchedClass.className === initialData.class) {
+            let matchedLesson = null;
 
-      const formatDateForAPI = (date: Date): string => {
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, "0");
-        const day = date.getDate().toString().padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      };
+            if (initialData.lessonPeriod !== undefined) {
+              matchedLesson = response.items.find((lesson) => lesson.period === initialData.lessonPeriod);
+            }
 
-      // Prepare date ranges for both weeks
-      const previousWeekFrom = formatDateForAPI(previousWeekMonday);
-      const previousWeekTo = formatDateForAPI(previousWeekSunday);
-      const currentWeekFrom = formatDateForAPI(currentWeekMonday);
-      const currentWeekTo = formatDateForAPI(currentWeekSunday);
+            if (!matchedLesson && initialData.lesson) {
+              const normalize = (str: string) => str.trim().toLowerCase();
+              const normalizedInitialLesson = normalize(initialData.lesson);
 
-      // Calculate the date and session of the scheduling cell
-      let cellDate: Date | null = null;
-      let cellSession: number | null = null;
-      if (cellInfo) {
-        // Map day names to their index in the week (Monday = 0, Tuesday = 1, ..., Sunday = 6)
-        const dayNameToIndex: Record<string, number> = {
-          Monday: 0,
-          Tuesday: 1,
-          Wednesday: 2,
-          Thursday: 3,
-          Friday: 4,
-          Saturday: 5,
-          Sunday: 6,
-        };
-        const cellDayIndex = dayNameToIndex[cellInfo.day];
-        if (cellDayIndex !== undefined) {
-          // Calculate the date for the cell's day in the current week
-          cellDate = new Date(currentWeekMonday);
-          cellDate.setDate(currentWeekMonday.getDate() + cellDayIndex);
-          // Set time to end of day to include lectures on the same day
-          cellDate.setHours(23, 59, 59, 999);
+              matchedLesson = response.items.find((lesson) => {
+                const normalizedLessonName = normalize(lesson.name);
+                const displayName = `${lesson.period} - ${lesson.name}`;
+                if (normalize(displayName) === normalizedInitialLesson) {
+                  return true;
+                }
+                if (normalizedLessonName === normalizedInitialLesson) {
+                  return true;
+                }
+                if (
+                  normalizedLessonName &&
+                  (normalizedInitialLesson.includes(normalizedLessonName) ||
+                    normalizedLessonName.includes(normalizedInitialLesson))
+                ) {
+                  return true;
+                }
+                return false;
+              });
+            }
+
+            if (matchedLesson) {
+              setSelectedLesson(matchedLesson.id);
+            } else {
+              console.log("Lesson not found for autofill:", {
+                initialDataLesson: initialData.lesson,
+                initialDataLessonPeriod: initialData.lessonPeriod,
+                availableLessons: response.items.map((l) => `${l.period} - ${l.name}`),
+              });
+            }
+          }
         }
+      })
+      .catch((error) => {
+        setLessonError(error instanceof Error ? error.message : "Failed to load lessons");
+        setIsLoadingLessons(false);
+      });
+  }, [isOpen, selectedClassId, selectedSubjectCode, classes, initialData]);
 
-        // Map session name to session number (API uses "section" field for session: 0=Morning, 1=Afternoon, 2=Evening)
-        const sessionNameToNumber: Record<string, number> = {
-          Morning: 0,
-          Afternoon: 1,
-          Evening: 2,
-        };
-        cellSession = sessionNameToNumber[cellInfo.session] ?? null;
+  // Fetch previous lecture for the selected class
+  useEffect(() => {
+    if (!isOpen || !selectedClassId) {
+      setPreviousLecture(null);
+      setIsLoadingPreviousLecture(false);
+      return;
+    }
+
+    setIsLoadingPreviousLecture(true);
+
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const currentWeekMonday = new Date(today);
+    currentWeekMonday.setDate(today.getDate() + mondayOffset);
+
+    const currentWeekSunday = new Date(currentWeekMonday);
+    currentWeekSunday.setDate(currentWeekMonday.getDate() + 6);
+
+    const previousWeekMonday = new Date(currentWeekMonday);
+    previousWeekMonday.setDate(currentWeekMonday.getDate() - 7);
+
+    const previousWeekSunday = new Date(previousWeekMonday);
+    previousWeekSunday.setDate(previousWeekMonday.getDate() + 6);
+
+    const formatDateForAPI = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const day = date.getDate().toString().padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    const previousWeekFrom = formatDateForAPI(previousWeekMonday);
+    const previousWeekTo = formatDateForAPI(previousWeekSunday);
+    const currentWeekFrom = formatDateForAPI(currentWeekMonday);
+    const currentWeekTo = formatDateForAPI(currentWeekSunday);
+
+    let cellDate: Date | null = null;
+    let cellSession: number | null = null;
+    if (cellInfo) {
+      const dayNameToIndex: Record<string, number> = {
+        Monday: 0,
+        Tuesday: 1,
+        Wednesday: 2,
+        Thursday: 3,
+        Friday: 4,
+        Saturday: 5,
+        Sunday: 6,
+      };
+      const cellDayIndex = dayNameToIndex[cellInfo.day];
+      if (cellDayIndex !== undefined) {
+        cellDate = new Date(currentWeekMonday);
+        cellDate.setDate(currentWeekMonday.getDate() + cellDayIndex);
+        cellDate.setHours(23, 59, 59, 999);
       }
 
-      // TODO: Get employeeId from user context or props
-      // For now, using example employeeId from the API documentation
-      const employeeId = "3a1c68da-2f33-aae3-a9d2-4cd8b7aba805";
+      const sessionNameToNumber: Record<string, number> = {
+        Morning: 0,
+        Afternoon: 1,
+        Evening: 2,
+      };
+      cellSession = sessionNameToNumber[cellInfo.session] ?? null;
+    }
 
-      // Call API twice: once for previous week and once for current week
-      Promise.all([
-        fetchTeachingSchedule(previousWeekFrom, previousWeekTo, employeeId, schoolYearId, "03"),
-        fetchTeachingSchedule(currentWeekFrom, currentWeekTo, employeeId, schoolYearId, "03"),
-      ])
-        .then(
-          ([previousWeekResponse, currentWeekResponse]: [
-            TeachingScheduleResponse | null,
-            TeachingScheduleResponse | null
-          ]) => {
-            // Combine lectures from both weeks
-            const allLectures = [
-              ...(previousWeekResponse?.teachingScheduleDetailDtos || []),
-              ...(currentWeekResponse?.teachingScheduleDetailDtos || []),
-            ];
+    const schoolYearId = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
+    const employeeId = "3a1c68da-2f33-aae3-a9d2-4cd8b7aba805";
 
-            // Find lectures for this class, excluding those after the cell date and session
-            let classLectures = allLectures.filter((detail: TeachingScheduleDetail) => {
-              if (detail.classId !== selectedClassId) {
+    Promise.all([
+      fetchTeachingSchedule(previousWeekFrom, previousWeekTo, employeeId, schoolYearId, "03"),
+      fetchTeachingSchedule(currentWeekFrom, currentWeekTo, employeeId, schoolYearId, "03"),
+    ])
+      .then(
+        ([previousWeekResponse, currentWeekResponse]: [
+          TeachingScheduleResponse | null,
+          TeachingScheduleResponse | null
+        ]) => {
+          const allLectures = [
+            ...(previousWeekResponse?.teachingScheduleDetailDtos || []),
+            ...(currentWeekResponse?.teachingScheduleDetailDtos || []),
+          ];
+
+          const classLectures = allLectures.filter((detail) => {
+            if (detail.classId !== selectedClassId) {
+              return false;
+            }
+
+            if (cellDate) {
+              const lectureDate = new Date(detail.dateStudy);
+              const lectureDateOnly = new Date(
+                lectureDate.getFullYear(),
+                lectureDate.getMonth(),
+                lectureDate.getDate()
+              );
+              const cellDateOnly = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+
+              if (lectureDateOnly > cellDateOnly) {
                 return false;
               }
-              // Exclude lectures after the scheduling cell date and session
-              if (cellDate) {
-                const lectureDate = new Date(detail.dateStudy);
-                const lectureDateOnly = new Date(
-                  lectureDate.getFullYear(),
-                  lectureDate.getMonth(),
-                  lectureDate.getDate()
-                );
-                const cellDateOnly = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
 
-                // If lecture is on a later date, exclude it
-                if (lectureDateOnly > cellDateOnly) {
+              if (lectureDateOnly.getTime() === cellDateOnly.getTime() && cellSession !== null && cellInfo) {
+                const normalizedLectureSession = normalizeSession(detail.section);
+                const normalizedCellSession = normalizeSession(cellSession);
+
+                if (normalizedLectureSession > normalizedCellSession) {
                   return false;
                 }
 
-                // If lecture is on the same date, check the session and period
-                if (lectureDateOnly.getTime() === cellDateOnly.getTime() && cellSession !== null && cellInfo) {
-                  // API uses "section" field for session: 0 = Morning, 1 = Afternoon, 2 = Evening
-                  const normalizedLectureSession = normalizeSession(detail.section);
-                  const normalizedCellSession = normalizeSession(cellSession);
+                if (normalizedLectureSession === normalizedCellSession) {
+                  const lecturePeriod = detail.period || 0;
+                  const cellPeriod = cellInfo.period || 0;
 
-                  // Exclude lectures in sessions after the cell's session
-                  // Afternoon (1) is after Morning (0), Evening (2) is after both
-                  // Session takes precedence: Afternoon period 1 is after Morning period 5
-                  if (normalizedLectureSession > normalizedCellSession) {
+                  if (lecturePeriod > cellPeriod) {
                     return false;
                   }
 
-                  // If same session, check period number
-                  if (normalizedLectureSession === normalizedCellSession) {
-                    // API uses "period" field for period in session
-                    const lecturePeriod = detail.period || 0;
-                    const cellPeriod = cellInfo.period || 0;
-
-                    // Exclude lectures with higher period number in the same session
-                    if (lecturePeriod > cellPeriod) {
-                      return false;
-                    }
-
-                    // Exclude lectures in the exact same timeslot (same day, same session, same period)
-                    if (lecturePeriod === cellPeriod) {
-                      return false;
-                    }
+                  if (lecturePeriod === cellPeriod) {
+                    return false;
                   }
                 }
               }
-              return true;
+            }
+
+            return true;
+          });
+
+          if (classLectures.length > 0) {
+            const sortedLectures = classLectures.sort((a, b) => {
+              const dateA = new Date(a.dateStudy).getTime();
+              const dateB = new Date(b.dateStudy).getTime();
+
+              if (dateB !== dateA) {
+                return dateB - dateA;
+              }
+
+              const normalizedSessionA = normalizeSession(a.section);
+              const normalizedSessionB = normalizeSession(b.section);
+              if (normalizedSessionB !== normalizedSessionA) {
+                return normalizedSessionB - normalizedSessionA;
+              }
+
+              return (b.period || 0) - (a.period || 0);
             });
 
-            if (classLectures.length > 0) {
-              // Sort by dateStudy, then by session, then by period to get the previous
-              const sortedLectures = classLectures.sort((a: TeachingScheduleDetail, b: TeachingScheduleDetail) => {
-                const dateA = new Date(a.dateStudy).getTime();
-                const dateB = new Date(b.dateStudy).getTime();
-
-                // First compare by date (descending - most recent first)
-                if (dateB !== dateA) {
-                  return dateB - dateA;
-                }
-
-                // If same date, compare by normalized session (descending - later session first)
-                // Afternoon (1) is after Morning (0), Evening (2) is after both
-                // API uses "section" field for session: 0 = Morning, 1 = Afternoon, 2 = Evening
-                const normalizedSessionA = normalizeSession(a.section);
-                const normalizedSessionB = normalizeSession(b.section);
-                if (normalizedSessionB !== normalizedSessionA) {
-                  return normalizedSessionB - normalizedSessionA;
-                }
-
-                // If same date and session, compare by period (descending - higher period first)
-                // API uses "period" field for period in session
-                return (b.period || 0) - (a.period || 0);
-              });
-
-              const previous = sortedLectures[0];
-              // API provides period number directly in the "period" field
-              setPreviousLecture(previous);
-            } else {
-              setPreviousLecture(null);
-            }
-            setIsLoadingPreviousLecture(false);
+            setPreviousLecture(sortedLectures[0]);
+          } else {
+            setPreviousLecture(null);
           }
-        )
-        .catch((error: unknown) => {
-          console.error("Failed to fetch previous lecture:", error);
-          setPreviousLecture(null);
           setIsLoadingPreviousLecture(false);
-        });
-    }
-  }, [isOpen, selectedClassId, classes, initialData, cellInfo]);
+        }
+      )
+      .catch((error: unknown) => {
+        console.error("Failed to fetch previous lecture:", error);
+        setPreviousLecture(null);
+        setIsLoadingPreviousLecture(false);
+      });
+  }, [isOpen, selectedClassId, cellInfo]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -451,10 +461,15 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
       ? `${selectedLessonItem.period} - ${selectedLessonItem.name}`
       : selectedLesson;
 
+    const selectedSubjectItem = subjects.find((subject) => subject.cateCode === selectedSubjectCode);
+    const subjectName = selectedSubjectItem?.cateName || "";
+
     onSave({
       lesson: lessonDisplayName,
       class: className,
       description: notes,
+      subject: subjectName,
+      subjectCode: selectedSubjectCode,
     });
   };
 
@@ -476,7 +491,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
           <div className="space-y-2">
             <label className="text-sm font-medium">Class</label>
             {isLoadingClasses ? (
-              <div className="h-21.5 w-full bg-muted rounded-md animate-pulse" />
+              <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
             ) : classError ? (
               <div className="text-sm text-destructive">{classError}</div>
             ) : (
@@ -507,6 +522,30 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
             )}
           </div>
 
+          {/* Subject Selection */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Subject</label>
+            {isLoadingSubjects ? (
+              <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
+            ) : subjectError ? (
+              <div className="text-sm text-destructive">{subjectError}</div>
+            ) : (
+              <select
+                id="subject"
+                value={selectedSubjectCode}
+                onChange={(e) => setSelectedSubjectCode(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+              >
+                <option value="">Select a subject</option>
+                {subjects.map((subject) => (
+                  <option key={subject.cateCode} value={subject.cateCode}>
+                    {subject.cateName}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
           {/* Lesson Selection - Dropdown */}
           <div className="space-y-2">
             <label htmlFor="lesson" className="text-sm font-medium">
@@ -521,9 +560,13 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
               <option value="">
                 {!selectedClassId
                   ? "Select a class first"
+                  : !selectedSubjectCode
+                  ? "Select a subject first"
                   : isLoadingLessons
                   ? "Loading lessons..."
-                  : "Select a lesson"}
+                  : lessons.length > 0
+                  ? "Select a lesson"
+                  : "No lessons available"}
               </option>
               {lessons.map((lesson) => (
                 <option key={lesson.id} value={lesson.id}>
@@ -539,7 +582,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
             <div className="space-y-2">
               <label className="text-sm font-medium">Previous Lecture</label>
               {isLoadingPreviousLecture ? (
-                <div className="h-22.5 w-full bg-muted rounded-md animate-pulse" />
+                <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
               ) : previousLecture ? (
                 <div className="flex gap-3 p-3 border border-border rounded-md bg-muted">
                   {/* Left: Calendar-style date */}

@@ -41,14 +41,6 @@ function formatDate(date: Date): string {
   return `${month}/${day}`;
 }
 
-// Format date as YYYY-MM-DD for input[type="date"]
-function formatDateForInput(date: Date): string {
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 // Format week range for display (e.g., "Jan 1 - Jan 7, 2024")
 function formatWeekRange(weekDates: Date[]): string {
   const monday = weekDates[0];
@@ -246,6 +238,8 @@ export default function TeachingSchedule() {
               lesson: detail.distributeProgramName || detail.subjectName || "",
               class: detail.className || "",
               description: detail.description || "",
+              subject: detail.subjectName || "",
+              subjectCode: detail.subjectCode || "",
               lessonPeriod: detail.distributeProgramPeriod,
             };
           });

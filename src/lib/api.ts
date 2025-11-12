@@ -1,3 +1,51 @@
+export interface SubjectItem {
+  cateCodeType: string;
+  cateCode: string;
+  cateName: string;
+  parentCateCode: string | null;
+  parentCateName: string | null;
+  acronymName: string;
+  ref1: string | null;
+  ref2: string | null;
+  ref3: string | null;
+  sort: number;
+  codeOther: string | null;
+  isMoetCode: boolean;
+}
+
+export async function fetchSubjects(schoolLevelCode: string = "03"): Promise<SubjectItem[]> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const response = await fetch(
+    `https://gateway.vtsmas.vn/api/cau-hinh/danh-muc/loai-danh-muc/DM_MON_HOC/${schoolLevelCode}?IsSort=true`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+      },
+    }
+  );
+
+  if (response.status === 204) {
+    return [];
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch subjects: ${response.status} ${response.statusText}. ${errorText}`);
+  }
+
+  const responseText = await response.text();
+
+  if (!responseText.trim()) {
+    return [];
+  }
+
+  return JSON.parse(responseText) as SubjectItem[];
+}
 import { getStoredTokens } from "./auth";
 
 export interface CurriculumItem {
