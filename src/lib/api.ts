@@ -1,3 +1,43 @@
+// Simple in-memory cache with expiration
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+class ApiCache {
+  private cache = new Map<string, CacheEntry<unknown>>();
+  private defaultTTL = 5 * 60 * 1000; // 5 minutes
+
+  private getKey(prefix: string, ...args: (string | undefined)[]): string {
+    return `${prefix}:${args.filter(Boolean).join(":")}`;
+  }
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) {
+      return null;
+    }
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.data as T;
+  }
+
+  set<T>(key: string, data: T, ttl?: number): void {
+    this.cache.set(key, {
+      data,
+      expiresAt: Date.now() + (ttl || this.defaultTTL),
+    });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+const apiCache = new ApiCache();
+
 export interface SubjectItem {
   cateCodeType: string;
   cateCode: string;
@@ -14,6 +54,11 @@ export interface SubjectItem {
 }
 
 export async function fetchSubjects(schoolLevelCode: string = "03"): Promise<SubjectItem[]> {
+  const cacheKey = apiCache.getKey("subjects", schoolLevelCode);
+  const cached = apiCache.get<SubjectItem[]>(cacheKey);
+  if (cached) {
+    return cached;
+  }
   const tokens = getStoredTokens();
   if (!tokens?.access_token) {
     throw new Error("No access token found. Please login first.");
@@ -30,6 +75,7 @@ export async function fetchSubjects(schoolLevelCode: string = "03"): Promise<Sub
   );
 
   if (response.status === 204) {
+    apiCache.set(cacheKey, []);
     return [];
   }
 
@@ -41,10 +87,13 @@ export async function fetchSubjects(schoolLevelCode: string = "03"): Promise<Sub
   const responseText = await response.text();
 
   if (!responseText.trim()) {
+    apiCache.set(cacheKey, []);
     return [];
   }
 
-  return JSON.parse(responseText) as SubjectItem[];
+  const result = JSON.parse(responseText) as SubjectItem[];
+  apiCache.set(cacheKey, result, 60 * 60 * 1000);
+  return result;
 }
 import { getStoredTokens } from "./auth";
 
@@ -178,6 +227,12 @@ export interface ClassFilter {
 }
 
 export async function fetchClasses(filter?: ClassFilter): Promise<ClassResponse> {
+  const cacheKey = apiCache.getKey("classes", filter?.schoolLevelCode, filter?.schoolYearId);
+  const cached = apiCache.get<ClassResponse>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const tokens = getStoredTokens();
   if (!tokens?.access_token) {
     throw new Error("No access token found. Please login first.");
@@ -252,7 +307,9 @@ export async function fetchClasses(filter?: ClassFilter): Promise<ClassResponse>
     throw new Error(`Failed to fetch classes: ${response.status} ${response.statusText}. ${errorText}`);
   }
 
-  return response.json();
+  const result = await response.json();
+  apiCache.set(cacheKey, result, 60 * 60 * 1000);
+  return result;
 }
 
 export interface TeachingScheduleDetail {
@@ -409,9 +466,7 @@ export interface LessonFeedbackResponse {
   lessonAssessmentBookDetails: LessonFeedbackDetail[];
 }
 
-export async function fetchLessonFeedback(
-  payload: LessonFeedbackRequest
-): Promise<LessonFeedbackResponse | null> {
+export async function fetchLessonFeedback(payload: LessonFeedbackRequest): Promise<LessonFeedbackResponse | null> {
   const tokens = getStoredTokens();
   if (!tokens?.access_token) {
     throw new Error("No access token found. Please login first.");
