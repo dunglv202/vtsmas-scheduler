@@ -1,7 +1,7 @@
 import { useState, FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { login } from "@/lib/auth";
+import { login, TOKEN_STORAGE_KEY } from "@/lib/auth";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -9,6 +9,11 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const authenticated = !!localStorage.getItem(TOKEN_STORAGE_KEY);
+
+  if (authenticated) {
+    return <Navigate to="/teaching-schedule" />;
+  }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -20,7 +25,9 @@ export default function Login() {
       // Redirect to teaching schedule after successful login
       navigate("/teaching-schedule");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred during login");
+      setError(
+        err instanceof Error ? err.message : "An error occurred during login"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -80,11 +87,7 @@ export default function Login() {
           )}
 
           <div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign in"}
             </Button>
           </div>
@@ -93,4 +96,3 @@ export default function Login() {
     </div>
   );
 }
-
