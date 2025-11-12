@@ -256,7 +256,7 @@ export async function fetchTeachingSchedule(
   employeeId: string,
   schoolYearId: string,
   schoolLevelCode: string = "03"
-): Promise<TeachingScheduleResponse> {
+): Promise<TeachingScheduleResponse | null> {
   const tokens = getStoredTokens();
   if (!tokens?.access_token) {
     throw new Error("No access token found. Please login first.");
@@ -289,6 +289,17 @@ export async function fetchTeachingSchedule(
     throw new Error(`Failed to fetch teaching schedule: ${response.status} ${response.statusText}. ${errorText}`);
   }
 
-  return response.json();
-}
+  // Handle 204 No Content or empty response body
+  if (response.status === 204) {
+    return null;
+  }
 
+  const responseText = await response.text();
+
+  // Handle empty response body (no content)
+  if (!responseText.trim()) {
+    return null;
+  }
+
+  return JSON.parse(responseText) as TeachingScheduleResponse;
+}

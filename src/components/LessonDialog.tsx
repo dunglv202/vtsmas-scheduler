@@ -332,100 +332,105 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo }:
         fetchTeachingSchedule(previousWeekFrom, previousWeekTo, employeeId, schoolYearId, "03"),
         fetchTeachingSchedule(currentWeekFrom, currentWeekTo, employeeId, schoolYearId, "03"),
       ])
-        .then(([previousWeekResponse, currentWeekResponse]: [TeachingScheduleResponse, TeachingScheduleResponse]) => {
-          // Combine lectures from both weeks
-          const allLectures = [
-            ...previousWeekResponse.teachingScheduleDetailDtos,
-            ...currentWeekResponse.teachingScheduleDetailDtos,
-          ];
+        .then(
+          ([previousWeekResponse, currentWeekResponse]: [
+            TeachingScheduleResponse | null,
+            TeachingScheduleResponse | null
+          ]) => {
+            // Combine lectures from both weeks
+            const allLectures = [
+              ...(previousWeekResponse?.teachingScheduleDetailDtos || []),
+              ...(currentWeekResponse?.teachingScheduleDetailDtos || []),
+            ];
 
-          // Find lectures for this class, excluding those after the cell date and session
-          let classLectures = allLectures.filter((detail: TeachingScheduleDetail) => {
-            if (detail.classId !== selectedClassId) {
-              return false;
-            }
-            // Exclude lectures after the scheduling cell date and session
-            if (cellDate) {
-              const lectureDate = new Date(detail.dateStudy);
-              const lectureDateOnly = new Date(
-                lectureDate.getFullYear(),
-                lectureDate.getMonth(),
-                lectureDate.getDate()
-              );
-              const cellDateOnly = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
-
-              // If lecture is on a later date, exclude it
-              if (lectureDateOnly > cellDateOnly) {
+            // Find lectures for this class, excluding those after the cell date and session
+            let classLectures = allLectures.filter((detail: TeachingScheduleDetail) => {
+              if (detail.classId !== selectedClassId) {
                 return false;
               }
+              // Exclude lectures after the scheduling cell date and session
+              if (cellDate) {
+                const lectureDate = new Date(detail.dateStudy);
+                const lectureDateOnly = new Date(
+                  lectureDate.getFullYear(),
+                  lectureDate.getMonth(),
+                  lectureDate.getDate()
+                );
+                const cellDateOnly = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
 
-              // If lecture is on the same date, check the session and period
-              if (lectureDateOnly.getTime() === cellDateOnly.getTime() && cellSession !== null && cellInfo) {
-                // API uses "section" field for session: 0 = Morning, 1 = Afternoon, 2 = Evening
-                const normalizedLectureSession = normalizeSession(detail.section);
-                const normalizedCellSession = normalizeSession(cellSession);
-
-                // Exclude lectures in sessions after the cell's session
-                // Afternoon (1) is after Morning (0), Evening (2) is after both
-                // Session takes precedence: Afternoon period 1 is after Morning period 5
-                if (normalizedLectureSession > normalizedCellSession) {
+                // If lecture is on a later date, exclude it
+                if (lectureDateOnly > cellDateOnly) {
                   return false;
                 }
 
-                // If same session, check period number
-                if (normalizedLectureSession === normalizedCellSession) {
-                  // API uses "period" field for period in session
-                  const lecturePeriod = detail.period || 0;
-                  const cellPeriod = cellInfo.period || 0;
+                // If lecture is on the same date, check the session and period
+                if (lectureDateOnly.getTime() === cellDateOnly.getTime() && cellSession !== null && cellInfo) {
+                  // API uses "section" field for session: 0 = Morning, 1 = Afternoon, 2 = Evening
+                  const normalizedLectureSession = normalizeSession(detail.section);
+                  const normalizedCellSession = normalizeSession(cellSession);
 
-                  // Exclude lectures with higher period number in the same session
-                  if (lecturePeriod > cellPeriod) {
+                  // Exclude lectures in sessions after the cell's session
+                  // Afternoon (1) is after Morning (0), Evening (2) is after both
+                  // Session takes precedence: Afternoon period 1 is after Morning period 5
+                  if (normalizedLectureSession > normalizedCellSession) {
                     return false;
                   }
 
-                  // Exclude lectures in the exact same timeslot (same day, same session, same period)
-                  if (lecturePeriod === cellPeriod) {
-                    return false;
+                  // If same session, check period number
+                  if (normalizedLectureSession === normalizedCellSession) {
+                    // API uses "period" field for period in session
+                    const lecturePeriod = detail.period || 0;
+                    const cellPeriod = cellInfo.period || 0;
+
+                    // Exclude lectures with higher period number in the same session
+                    if (lecturePeriod > cellPeriod) {
+                      return false;
+                    }
+
+                    // Exclude lectures in the exact same timeslot (same day, same session, same period)
+                    if (lecturePeriod === cellPeriod) {
+                      return false;
+                    }
                   }
                 }
               }
-            }
-            return true;
-          });
-
-          if (classLectures.length > 0) {
-            // Sort by dateStudy, then by session, then by period to get the previous
-            const sortedLectures = classLectures.sort((a: TeachingScheduleDetail, b: TeachingScheduleDetail) => {
-              const dateA = new Date(a.dateStudy).getTime();
-              const dateB = new Date(b.dateStudy).getTime();
-
-              // First compare by date (descending - most recent first)
-              if (dateB !== dateA) {
-                return dateB - dateA;
-              }
-
-              // If same date, compare by normalized session (descending - later session first)
-              // Afternoon (1) is after Morning (0), Evening (2) is after both
-              // API uses "section" field for session: 0 = Morning, 1 = Afternoon, 2 = Evening
-              const normalizedSessionA = normalizeSession(a.section);
-              const normalizedSessionB = normalizeSession(b.section);
-              if (normalizedSessionB !== normalizedSessionA) {
-                return normalizedSessionB - normalizedSessionA;
-              }
-
-              // If same date and session, compare by period (descending - higher period first)
-              // API uses "period" field for period in session
-              return (b.period || 0) - (a.period || 0);
+              return true;
             });
 
-            const previous = sortedLectures[0];
-            // API provides period number directly in the "period" field
-            setPreviousLecture(previous);
-          } else {
-            setPreviousLecture(null);
+            if (classLectures.length > 0) {
+              // Sort by dateStudy, then by session, then by period to get the previous
+              const sortedLectures = classLectures.sort((a: TeachingScheduleDetail, b: TeachingScheduleDetail) => {
+                const dateA = new Date(a.dateStudy).getTime();
+                const dateB = new Date(b.dateStudy).getTime();
+
+                // First compare by date (descending - most recent first)
+                if (dateB !== dateA) {
+                  return dateB - dateA;
+                }
+
+                // If same date, compare by normalized session (descending - later session first)
+                // Afternoon (1) is after Morning (0), Evening (2) is after both
+                // API uses "section" field for session: 0 = Morning, 1 = Afternoon, 2 = Evening
+                const normalizedSessionA = normalizeSession(a.section);
+                const normalizedSessionB = normalizeSession(b.section);
+                if (normalizedSessionB !== normalizedSessionA) {
+                  return normalizedSessionB - normalizedSessionA;
+                }
+
+                // If same date and session, compare by period (descending - higher period first)
+                // API uses "period" field for period in session
+                return (b.period || 0) - (a.period || 0);
+              });
+
+              const previous = sortedLectures[0];
+              // API provides period number directly in the "period" field
+              setPreviousLecture(previous);
+            } else {
+              setPreviousLecture(null);
+            }
+            setIsLoadingPreviousLecture(false);
           }
-          setIsLoadingPreviousLecture(false);
-        })
+        )
         .catch((error: unknown) => {
           console.error("Failed to fetch previous lecture:", error);
           setPreviousLecture(null);

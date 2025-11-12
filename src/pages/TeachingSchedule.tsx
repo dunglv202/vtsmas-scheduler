@@ -226,28 +226,30 @@ export default function TeachingSchedule() {
         // Map API response to schedule cells
         const scheduleMap: Record<string, LessonInfo> = {};
 
-        response.teachingScheduleDetailDtos.forEach((detail: TeachingScheduleDetail) => {
-          // Get day name from dateStudy
-          const dateStudy = new Date(detail.dateStudy);
-          const dayName = getDayNameFromDate(dateStudy);
+        if (response) {
+          response.teachingScheduleDetailDtos.forEach((detail: TeachingScheduleDetail) => {
+            // Get day name from dateStudy
+            const dateStudy = new Date(detail.dateStudy);
+            const dayName = getDayNameFromDate(dateStudy);
 
-          // Get session name from section (0=Morning, 1=Afternoon, 2=Evening)
-          const sessionName = getSessionNameFromSection(detail.section);
+            // Get session name from section (0=Morning, 1=Afternoon, 2=Evening)
+            const sessionName = getSessionNameFromSection(detail.section);
 
-          // Get period number
-          const period = detail.period;
+            // Get period number
+            const period = detail.period;
 
-          // Create cell key
-          const key = getCellKey(dayName, sessionName, period);
+            // Create cell key
+            const key = getCellKey(dayName, sessionName, period);
 
-          // Map to LessonInfo
-          scheduleMap[key] = {
-            lesson: detail.distributeProgramName || detail.subjectName || "",
-            class: detail.className || "",
-            description: detail.description || "",
-            lessonPeriod: detail.distributeProgramPeriod,
-          };
-        });
+            // Map to LessonInfo
+            scheduleMap[key] = {
+              lesson: detail.distributeProgramName || detail.subjectName || "",
+              class: detail.className || "",
+              description: detail.description || "",
+              lessonPeriod: detail.distributeProgramPeriod,
+            };
+          });
+        }
 
         setSchedule(scheduleMap);
       } catch (error) {
