@@ -83,6 +83,7 @@ export default function TeachingSchedule() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [schedule, setSchedule] = useState<Record<string, LessonInfo>>({});
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [weekDates, setWeekDates] = useState<Date[]>(getCurrentWeekDates());
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
@@ -95,6 +96,8 @@ export default function TeachingSchedule() {
   // Update week dates when selected date changes
   useEffect(() => {
     setWeekDates(getWeekDatesFromDate(selectedDate));
+    // Update calendar month to show the month of the selected date
+    setCalendarMonth(selectedDate);
   }, [selectedDate]);
 
   // Fetch classes for filter
@@ -361,7 +364,14 @@ export default function TeachingSchedule() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={weekDates[0]} onSelect={handleDateSelect} initialFocus />
+                <Calendar
+                  mode="single"
+                  selected={weekDates[0]}
+                  onSelect={handleDateSelect}
+                  month={calendarMonth}
+                  onMonthChange={setCalendarMonth}
+                  initialFocus
+                />
               </PopoverContent>
             </Popover>
           </div>
