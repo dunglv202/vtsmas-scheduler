@@ -17,13 +17,10 @@ import {
   type LessonFeedbackDetail,
 } from "@/lib/api";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
+import { useEmployee } from "@/contexts/EmployeeContext";
 import type { LessonInfo, ScheduleCell } from "./types";
 import {
   DAY_ORDER,
-  DEFAULT_EMPLOYEE_CODE,
-  DEFAULT_EMPLOYEE_ID,
-  DEFAULT_EMPLOYEE_NAME,
-  DEFAULT_PHONE_NUMBER,
   DEFAULT_SCHOOL_LEVEL_CODE,
   SESSION_NAME_TO_NUMBER,
   ZERO_GUID,
@@ -127,6 +124,7 @@ export function useLessonDialog({
   onSave,
 }: UseLessonDialogParams): LessonDialogHookResult {
   const { schoolYear } = useSchoolYear();
+  const { employee } = useEmployee();
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedLessonId, setSelectedLessonId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -498,18 +496,24 @@ export function useLessonDialog({
       cellSession = SESSION_NAME_TO_NUMBER[cellInfo.session] ?? null;
     }
 
+    if (!employee) {
+      setPreviousLecture(null);
+      setIsLoadingPreviousLecture(false);
+      return;
+    }
+
     Promise.all([
       fetchTeachingSchedule(
         previousWeekFrom,
         previousWeekTo,
-        DEFAULT_EMPLOYEE_ID,
+        employee.employeeId,
         schoolYear.schoolYearId,
         DEFAULT_SCHOOL_LEVEL_CODE
       ),
       fetchTeachingSchedule(
         currentWeekFrom,
         currentWeekTo,
-        DEFAULT_EMPLOYEE_ID,
+        employee.employeeId,
         schoolYear.schoolYearId,
         DEFAULT_SCHOOL_LEVEL_CODE
       ),
@@ -600,7 +604,7 @@ export function useLessonDialog({
         setPreviousLecture(null);
         setIsLoadingPreviousLecture(false);
       });
-  }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, weekDates, schoolYear]);
+  }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, weekDates, schoolYear, employee]);
 
   useEffect(() => {
     if (!isOpen || !selectedClassId || !selectedSubjectCode || !cellInfo || !schoolYear) {
@@ -922,10 +926,10 @@ export function useLessonDialog({
         const dateToISO = formatDateISO(weekDates![6]);
 
         await createTeachingSchedule({
-          employeeName: employeeName || DEFAULT_EMPLOYEE_NAME,
-          employeeId: DEFAULT_EMPLOYEE_ID,
-          employeeCode: DEFAULT_EMPLOYEE_CODE,
-          phoneNumber: DEFAULT_PHONE_NUMBER,
+          employeeName: employeeName || employee!.fullName,
+          employeeId: employee!.employeeId,
+          employeeCode: employee!.code,
+          phoneNumber: employee!.phone || "",
           schoolYearId: schoolYear.schoolYearId,
           schoolLevelCode: DEFAULT_SCHOOL_LEVEL_CODE,
           schoolYearCode: schoolYear.code,
@@ -946,8 +950,8 @@ export function useLessonDialog({
             ...detailForSchedule,
             employeeSubstituteId: ZERO_GUID,
             teachingScheduleId: scheduleIdToUse,
-            employeeId: DEFAULT_EMPLOYEE_ID,
-            employeeName: employeeName || DEFAULT_EMPLOYEE_NAME,
+            employeeId: employee!.employeeId,
+            employeeName: employeeName || employee!.fullName,
             employeeSubstituteName: "",
           };
 
@@ -958,10 +962,10 @@ export function useLessonDialog({
           const dateToISO = formatDateISO(weekDates![6]);
 
           await createTeachingSchedule({
-            employeeName: employeeName || DEFAULT_EMPLOYEE_NAME,
-            employeeId: DEFAULT_EMPLOYEE_ID,
-            employeeCode: DEFAULT_EMPLOYEE_CODE,
-            phoneNumber: DEFAULT_PHONE_NUMBER,
+            employeeName: employeeName || employee!.fullName,
+            employeeId: employee!.employeeId,
+            employeeCode: employee!.code,
+            phoneNumber: employee!.phone || "",
             schoolYearId: schoolYear.schoolYearId,
             schoolLevelCode: DEFAULT_SCHOOL_LEVEL_CODE,
             schoolYearCode: schoolYear.code,

@@ -717,3 +717,86 @@ export async function fetchLessonFeedback(payload: LessonFeedbackRequest): Promi
 
   return JSON.parse(text) as LessonFeedbackResponse;
 }
+
+export interface EmployeeInfo {
+  id: string;
+  name: string;
+  code: string;
+  identificationCode: string | null;
+  alias: string | null;
+  fullName: string;
+  phone: string;
+  imageSrc: string;
+  signatureSrc: string;
+  facultyId: string;
+  facultyName: string;
+  birthDate: string;
+  homeTown: string | null;
+  contractTypeCode: string;
+  contractTypeName: string;
+  subjectTaughtCode: string;
+  subjectTaughtName: string;
+  birthPlace: string | null;
+  genderCode: string;
+  genderName: string;
+  joinedDate: string;
+  isLeader: boolean;
+  isNew: boolean;
+  identityNumber: string;
+  identityIssuedDate: string | null;
+  identityIssuedPlace: string | null;
+  email: string;
+  nation: string;
+  nationName: string;
+  religion: string;
+  religionName: string;
+  healthStatus: string | null;
+  mainLevelTeachingCode: string;
+  mainLevelTeachingName: string;
+  statusCode: string;
+  statusName: string;
+  provinceCode: string;
+  provinceName: string;
+  districtCode: string;
+  districtName: string;
+  communeCode: string | null;
+  communeName: string | null;
+  insuranceNumber: string | null;
+  tenantId: string;
+  employeeId: string;
+  [key: string]: unknown;
+}
+
+export async function fetchEmployeeInfo(employeeId: string, schoolYearId: string): Promise<EmployeeInfo> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const response = await fetch(
+    `https://gateway.vtsmas.vn/api/can-bo/v2/${employeeId}/${schoolYearId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+        "Accept-Language": "vi",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch employee info: ${response.status} ${response.statusText}. ${errorText}`);
+  }
+
+  if (response.status === 204) {
+    throw new Error("No employee information found");
+  }
+
+  const responseText = await response.text();
+  if (!responseText.trim()) {
+    throw new Error("Empty response from employee info API");
+  }
+
+  return JSON.parse(responseText) as EmployeeInfo;
+}

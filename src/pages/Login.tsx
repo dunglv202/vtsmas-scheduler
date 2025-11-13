@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { login, TOKEN_STORAGE_KEY } from "@/lib/auth";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
+import { useEmployee } from "@/contexts/EmployeeContext";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -11,6 +12,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { refresh: refreshSchoolYear } = useSchoolYear();
+  const { refresh: refreshEmployee } = useEmployee();
   const authenticated = !!localStorage.getItem(TOKEN_STORAGE_KEY);
 
   if (authenticated) {
@@ -24,8 +26,9 @@ export default function Login() {
 
     try {
       await login(username, password);
-      // Fetch school year after successful login
+      // Fetch school year and employee info after successful login
       await refreshSchoolYear();
+      await refreshEmployee();
       // Redirect to teaching schedule after successful login
       navigate("/teaching-schedule");
     } catch (err) {

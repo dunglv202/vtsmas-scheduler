@@ -25,10 +25,6 @@ export const SESSION_NAME_TO_NUMBER: Record<string, number> = {
 };
 
 export const ZERO_GUID = "00000000-0000-0000-0000-000000000000";
-export const DEFAULT_EMPLOYEE_ID = "3a1c68da-2f33-aae3-a9d2-4cd8b7aba805";
-export const DEFAULT_EMPLOYEE_NAME = "Trần Hoài Thương";
-export const DEFAULT_EMPLOYEE_CODE = "20186511-01-70";
-export const DEFAULT_PHONE_NUMBER = "";
 export const DEFAULT_SCHOOL_LEVEL_CODE = "03";
 
 export const translateDay = (day: string): string => {

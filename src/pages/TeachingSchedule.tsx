@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
+import { useEmployee } from "@/contexts/EmployeeContext";
 import { fetchClasses, fetchTeachingSchedule, type ClassItem, type TeachingScheduleDetail } from "@/lib/api";
 import { CalendarIcon, Filter, RefreshCw } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
@@ -122,6 +123,7 @@ function getSessionNameFromSection(section: number): string {
 
 export default function TeachingSchedule() {
   const { schoolYear } = useSchoolYear();
+  const { employee } = useEmployee();
   const [selectedCell, setSelectedCell] = useState<ScheduleCell | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [schedule, setSchedule] = useState<Record<string, LessonInfo>>({});
@@ -250,7 +252,7 @@ export default function TeachingSchedule() {
 
   // Fetch teaching schedule from API
   useEffect(() => {
-    if (!schoolYear) return;
+    if (!schoolYear || !employee) return;
 
     const loadSchedule = async () => {
       setIsLoadingSchedule(true);
@@ -265,8 +267,7 @@ export default function TeachingSchedule() {
         const fromDate = formatDateForAPI(monday);
         const toDate = formatDateForAPI(sunday);
 
-        // TODO: Get employeeId from user context or token
-        const employeeId = "3a1c68da-2f33-aae3-a9d2-4cd8b7aba805";
+        const employeeId = employee.employeeId;
         const schoolYearId = schoolYear.schoolYearId;
         const schoolLevelCode = "03"; // TODO: Get from user context or API
 
@@ -347,7 +348,7 @@ export default function TeachingSchedule() {
     };
 
     loadSchedule();
-  }, [weekDates, refreshCounter, schoolYear]);
+  }, [weekDates, refreshCounter, schoolYear, employee]);
 
   // Generate rows: 3 sessions × 5 periods = 15 rows
   const rows: Array<{ session: string; period: number }> = [];

@@ -3,6 +3,7 @@ import "./App.css";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { CommandMenu } from "./components/CommandMenu";
 import { SchoolYearProvider } from "./contexts/SchoolYearContext";
+import { EmployeeProvider } from "./contexts/EmployeeContext";
 import Login from "./pages/Login";
 import TeachingSchedule from "./pages/TeachingSchedule";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,15 +11,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 function App() {
   return (
     <SchoolYearProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route element={<ProtectedRoute />}>
-            <Route path="teaching-schedule" element={<TeachingSchedule />} />
+      <EmployeeProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Home />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="teaching-schedule" element={<TeachingSchedule />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
+        </Routes>
+      </EmployeeProvider>
     </SchoolYearProvider>
   );
 }
