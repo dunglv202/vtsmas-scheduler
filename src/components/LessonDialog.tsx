@@ -68,8 +68,6 @@ export function LessonDialog({
     onSave,
   });
 
-  const cardLoading = feedbackState.isLoading || previousLectureState.isLoading;
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
@@ -82,123 +80,107 @@ export function LessonDialog({
         </DialogHeader>
 
         <ScrollArea className="flex-1 min-h-0 px-5">
-          {cardLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <svg className="mr-3 size-5 animate-spin text-primary" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          <div className="space-y-6 pb-6">
+            <FeedbackSection
+              shouldShow={shouldShowFeedback}
+              isLoading={feedbackState.isLoading}
+              feedback={feedbackState.feedback}
+              error={feedbackState.feedbackError}
+            />
+
+            <form id="lesson-form" onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2 px-1">
+                <label className="text-sm font-medium">Lớp</label>
+                <ClassSelector
+                  classes={classState.classes}
+                  selectedClassId={classState.selectedClassId}
+                  isLoading={classState.isLoading}
+                  error={classState.error}
+                  onSelect={classState.onSelect}
                 />
-              </svg>
-              <span className="text-sm text-muted-foreground">Đang tải...</span>
-            </div>
-          ) : (
-            <div className="space-y-6 pb-6">
-              <FeedbackSection
-                shouldShow={shouldShowFeedback}
-                isLoading={false}
-                feedback={feedbackState.feedback}
-                error={feedbackState.feedbackError}
+              </div>
+
+              <div className="space-y-2 px-1">
+                <label className="text-sm font-medium">Môn học</label>
+                <SubjectSelector
+                  subjects={subjectState.subjects}
+                  selectedSubjectCode={subjectState.selectedSubjectCode}
+                  isLoading={subjectState.isLoading}
+                  error={subjectState.error}
+                  onChange={subjectState.onChange}
+                />
+              </div>
+
+              <LessonSelector
+                lessons={lessonState.lessons}
+                selectedLessonId={lessonState.selectedLessonId}
+                isLoading={lessonState.isLoading}
+                error={lessonState.error}
+                selectedClassId={classState.selectedClassId}
+                selectedSubjectCode={subjectState.selectedSubjectCode}
+                onChange={lessonState.onChange}
               />
 
-              <form id="lesson-form" onSubmit={handleSubmit} className="space-y-4">
+              {classState.selectedClassId && (
                 <div className="space-y-2 px-1">
-                  <label className="text-sm font-medium">Lớp</label>
-                  <ClassSelector
-                    classes={classState.classes}
-                    selectedClassId={classState.selectedClassId}
-                    isLoading={classState.isLoading}
-                    error={classState.error}
-                    onSelect={classState.onSelect}
+                  <label className="text-sm font-medium">Tiết dạy trước</label>
+                  <PreviousLectureCard
+                    previousLecture={previousLectureState.previousLecture}
+                    isLoading={previousLectureState.isLoading}
                   />
                 </div>
+              )}
 
-                <div className="space-y-2 px-1">
-                  <label className="text-sm font-medium">Môn học</label>
-                  <SubjectSelector
-                    subjects={subjectState.subjects}
-                    selectedSubjectCode={subjectState.selectedSubjectCode}
-                    isLoading={subjectState.isLoading}
-                    error={subjectState.error}
-                    onChange={subjectState.onChange}
-                  />
-                </div>
+              <NotesField value={notes} onChange={setNotes} />
 
-                <LessonSelector
-                  lessons={lessonState.lessons}
-                  selectedLessonId={lessonState.selectedLessonId}
-                  isLoading={lessonState.isLoading}
-                  error={lessonState.error}
-                  selectedClassId={classState.selectedClassId}
-                  selectedSubjectCode={subjectState.selectedSubjectCode}
-                  onChange={lessonState.onChange}
+              <div className="-mt-5">
+                <ExtrasAccordion
+                  lectureType={extrasState.lectureType}
+                  setLectureType={extrasState.setLectureType}
+                  equipmentName={extrasState.equipmentName}
+                  setEquipmentName={extrasState.setEquipmentName}
+                  equipmentQuantity={extrasState.equipmentQuantity}
+                  setEquipmentQuantity={extrasState.setEquipmentQuantity}
+                  equipmentType={extrasState.equipmentType}
+                  setEquipmentType={extrasState.setEquipmentType}
+                  extrasAccordionValue={extrasState.extrasAccordionValue}
+                  setExtrasAccordionValue={extrasState.setExtrasAccordionValue}
                 />
+              </div>
 
-                {classState.selectedClassId && (
-                  <div className="space-y-2 px-1">
-                    <label className="text-sm font-medium">Tiết dạy trước</label>
-                    <PreviousLectureCard
-                      previousLecture={previousLectureState.previousLecture}
-                      isLoading={false}
-                    />
-                  </div>
+              {saveError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {saveError}
+                </p>
+              )}
+
+              {unscheduleError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {unscheduleError}
+                </p>
+              )}
+
+              <DialogFooter className="p-0">
+                {canUnschedule && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleUnschedule}
+                    disabled={isUnscheduling || isSaving}
+                  >
+                    {isUnscheduling ? "Đang xóa..." : "Hủy lịch"}
+                  </Button>
                 )}
-
-                <NotesField value={notes} onChange={setNotes} />
-
-                <div className="-mt-5">
-                  <ExtrasAccordion
-                    lectureType={extrasState.lectureType}
-                    setLectureType={extrasState.setLectureType}
-                    equipmentName={extrasState.equipmentName}
-                    setEquipmentName={extrasState.setEquipmentName}
-                    equipmentQuantity={extrasState.equipmentQuantity}
-                    setEquipmentQuantity={extrasState.setEquipmentQuantity}
-                    equipmentType={extrasState.equipmentType}
-                    setEquipmentType={extrasState.setEquipmentType}
-                    extrasAccordionValue={extrasState.extrasAccordionValue}
-                    setExtrasAccordionValue={extrasState.setExtrasAccordionValue}
-                  />
-                </div>
-
-                {saveError && (
-                  <p className="text-sm text-destructive" role="alert">
-                    {saveError}
-                  </p>
-                )}
-
-                {unscheduleError && (
-                  <p className="text-sm text-destructive" role="alert">
-                    {unscheduleError}
-                  </p>
-                )}
-              </form>
-            </div>
-          )}
+                <Button type="button" variant="outline" onClick={onClose} disabled={isSaving || isUnscheduling}>
+                  Hủy
+                </Button>
+                <Button type="submit" disabled={isSaving || isUnscheduling}>
+                  {isSaving ? "Đang lưu..." : "Lưu"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
         </ScrollArea>
-
-        {!cardLoading && (
-          <DialogFooter className="px-6 pb-6 pt-4 shrink-0">
-            {canUnschedule && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleUnschedule}
-                disabled={isUnscheduling || isSaving}
-              >
-                {isUnscheduling ? "Đang xóa..." : "Hủy lịch"}
-              </Button>
-            )}
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving || isUnscheduling}>
-              Hủy
-            </Button>
-            <Button type="submit" form="lesson-form" disabled={isSaving || isUnscheduling}>
-              {isSaving ? "Đang lưu..." : "Lưu"}
-            </Button>
-          </DialogFooter>
-        )}
       </DialogContent>
     </Dialog>
   );

@@ -7,6 +7,10 @@ interface PreviousLectureCardProps {
 }
 
 export function PreviousLectureCard({ previousLecture, isLoading }: PreviousLectureCardProps) {
+  if (isLoading) {
+    return <div className="h-24 w-full bg-muted rounded-md" />;
+  }
+
   if (!previousLecture) {
     return (
       <div className="text-sm text-muted-foreground p-3 border border-border rounded-md bg-muted h-24 flex items-center">

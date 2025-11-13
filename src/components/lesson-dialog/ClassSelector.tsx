@@ -9,6 +9,10 @@ interface ClassSelectorProps {
 }
 
 export function ClassSelector({ classes, selectedClassId, isLoading, error, onSelect }: ClassSelectorProps) {
+  if (isLoading) {
+    return <div className="h-24 w-full bg-muted rounded-md" />;
+  }
+
   if (error) {
     return <div className="text-sm text-destructive">{error}</div>;
   }
