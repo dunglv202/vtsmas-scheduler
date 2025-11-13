@@ -6,6 +6,7 @@ import {
   fetchSubjects,
   fetchLessonFeedback,
   createTeachingScheduleDetail,
+  deleteTeachingScheduleDetails,
   type CreateTeachingScheduleDetailRequest,
   type CurriculumItem,
   type ClassItem,
@@ -100,6 +101,10 @@ export interface LessonDialogHookResult {
   saveError: string | null;
   isSaving: boolean;
   handleSubmit: (event: React.FormEvent) => Promise<void>;
+  isUnscheduling: boolean;
+  unscheduleError: string | null;
+  handleUnschedule: () => Promise<void>;
+  canUnschedule: boolean;
 }
 
 export function useLessonDialog({
@@ -144,6 +149,8 @@ export function useLessonDialog({
   const [feedback, setFeedback] = useState<LessonFeedbackDetail | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isUnscheduling, setIsUnscheduling] = useState(false);
+  const [unscheduleError, setUnscheduleError] = useState<string | null>(null);
   const hasInitializedRef = useRef(false);
   const hasInitializedSubjectRef = useRef(false);
   const previousInitialDataRef = useRef<LessonInfo | undefined>(undefined);
@@ -152,6 +159,8 @@ export function useLessonDialog({
     if (isOpen) {
       setSaveError(null);
       setIsSaving(false);
+      setUnscheduleError(null);
+      setIsUnscheduling(false);
       if (previousInitialDataRef.current !== initialData) {
         hasInitializedRef.current = false;
         hasInitializedSubjectRef.current = false;
@@ -199,6 +208,8 @@ export function useLessonDialog({
       setIsLoadingPreviousLecture(false);
       setSaveError(null);
       setIsSaving(false);
+      setUnscheduleError(null);
+      setIsUnscheduling(false);
     }
   }, [isOpen, initialData]);
 
@@ -835,6 +846,37 @@ export function useLessonDialog({
     }
   };
 
+  const handleUnschedule = async () => {
+    if (!initialData?.scheduleDetailId || !teachingScheduleId) {
+      setUnscheduleError("Không thể xóa tiết dạy. Thiếu thông tin cần thiết.");
+      return;
+    }
+
+    setIsUnscheduling(true);
+    setUnscheduleError(null);
+
+    try {
+      await deleteTeachingScheduleDetails(teachingScheduleId, [initialData.scheduleDetailId]);
+      // After successful deletion, call onSave with empty/cleared data to update the UI
+      onSave({
+        lesson: undefined,
+        class: undefined,
+        description: undefined,
+        subject: undefined,
+        subjectCode: undefined,
+        lessonPeriod: undefined,
+        scheduleDetailId: undefined,
+      });
+    } catch (error) {
+      console.error("Failed to unschedule lecture:", error);
+      setUnscheduleError(error instanceof Error ? error.message : "Không thể xóa tiết dạy. Vui lòng thử lại.");
+    } finally {
+      setIsUnscheduling(false);
+    }
+  };
+
+  const canUnschedule = Boolean(initialData?.scheduleDetailId && teachingScheduleId);
+
   return {
     dialogTitle,
     classState,
@@ -849,5 +891,9 @@ export function useLessonDialog({
     saveError,
     isSaving,
     handleSubmit,
+    isUnscheduling,
+    unscheduleError,
+    handleUnschedule,
+    canUnschedule,
   };
 }

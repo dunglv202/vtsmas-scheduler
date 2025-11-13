@@ -449,9 +449,7 @@ export interface CreateTeachingScheduleDetailRequest {
   employeeSubstituteName: string;
 }
 
-export async function createTeachingScheduleDetail(
-  payload: CreateTeachingScheduleDetailRequest
-): Promise<void> {
+export async function createTeachingScheduleDetail(payload: CreateTeachingScheduleDetailRequest): Promise<void> {
   const tokens = getStoredTokens();
   if (!tokens?.access_token) {
     throw new Error("No access token found. Please login first.");
@@ -471,6 +469,37 @@ export async function createTeachingScheduleDetail(
     const errorText = await response.text();
     throw new Error(
       `Failed to create teaching schedule detail: ${response.status} ${response.statusText}. ${errorText}`
+    );
+  }
+}
+
+export async function deleteTeachingScheduleDetails(
+  teachingScheduleId: string,
+  scheduleDetailIds: string[]
+): Promise<void> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  if (scheduleDetailIds.length === 0) {
+    throw new Error("No schedule detail IDs provided for deletion.");
+  }
+
+  const response = await fetch(`https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/xoa/${teachingScheduleId}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tokens.access_token}`,
+      "Content-Type": "application/json",
+      "Accept-Language": "vi",
+    },
+    body: JSON.stringify(scheduleDetailIds),
+  });
+
+  if (!response.ok && response.status !== 204) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to delete teaching schedule details: ${response.status} ${response.statusText}. ${errorText}`
     );
   }
 }

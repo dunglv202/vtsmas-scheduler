@@ -17,6 +17,7 @@ export interface LessonInfo {
   gradeName?: string;
   lectureType?: string;
   equipment?: LessonEquipment;
+  scheduleDetailId?: string; // ID of the teaching schedule detail (for deletion)
 }
 
 export interface ScheduleCell {

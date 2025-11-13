@@ -53,6 +53,10 @@ export function LessonDialog({
     saveError,
     isSaving,
     handleSubmit,
+    isUnscheduling,
+    unscheduleError,
+    handleUnschedule,
+    canUnschedule,
   } = useLessonDialog({
     isOpen,
     initialData,
@@ -146,11 +150,27 @@ export function LessonDialog({
               </p>
             )}
 
+            {unscheduleError && (
+              <p className="text-sm text-destructive" role="alert">
+                {unscheduleError}
+              </p>
+            )}
+
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
+              {canUnschedule && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleUnschedule}
+                  disabled={isUnscheduling || isSaving}
+                >
+                  {isUnscheduling ? "Đang xóa..." : "Hủy lịch"}
+                </Button>
+              )}
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSaving || isUnscheduling}>
                 Hủy
               </Button>
-              <Button type="submit" disabled={isSaving}>
+              <Button type="submit" disabled={isSaving || isUnscheduling}>
                 {isSaving ? "Đang lưu..." : "Lưu"}
               </Button>
             </DialogFooter>
@@ -160,4 +180,3 @@ export function LessonDialog({
     </Dialog>
   );
 }
-

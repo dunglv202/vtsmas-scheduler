@@ -62,7 +62,20 @@ function formatDate(date: Date): string {
 function formatWeekRange(weekDates: Date[]): string {
   const monday = weekDates[0];
   const sunday = weekDates[6];
-  const months = ["Thg 1", "Thg 2", "Thg 3", "Thg 4", "Thg 5", "Thg 6", "Thg 7", "Thg 8", "Thg 9", "Thg 10", "Thg 11", "Thg 12"];
+  const months = [
+    "Thg 1",
+    "Thg 2",
+    "Thg 3",
+    "Thg 4",
+    "Thg 5",
+    "Thg 6",
+    "Thg 7",
+    "Thg 8",
+    "Thg 9",
+    "Thg 10",
+    "Thg 11",
+    "Thg 12",
+  ];
 
   const mondayStr = `${monday.getDate()} ${months[monday.getMonth()]}`;
   const sundayStr = `${sunday.getDate()} ${months[sunday.getMonth()]}, ${sunday.getFullYear()}`;
@@ -268,19 +281,13 @@ export default function TeachingSchedule() {
             // Map to LessonInfo
             const statusLectureType =
               typeof detail.status === "number" ? STATUS_TO_LECTURE_TYPE[detail.status] : undefined;
-            const toolTypeLabel =
-              typeof detail.toolType === "number" ? TOOL_TYPE_TO_LABEL[detail.toolType] : undefined;
+            const toolTypeLabel = typeof detail.toolType === "number" ? TOOL_TYPE_TO_LABEL[detail.toolType] : undefined;
             const toolNameValue =
-              detail.toolName !== undefined && detail.toolName !== null
-                ? String(detail.toolName).trim()
-                : "";
+              detail.toolName !== undefined && detail.toolName !== null ? String(detail.toolName).trim() : "";
             const totalToolValue =
-              detail.totalTool !== undefined && detail.totalTool !== null
-                ? String(detail.totalTool).trim()
-                : "";
+              detail.totalTool !== undefined && detail.totalTool !== null ? String(detail.totalTool).trim() : "";
             const equipment =
-              detail.isRegisterLearningTool &&
-              (toolNameValue || totalToolValue || toolTypeLabel)
+              detail.isRegisterLearningTool && (toolNameValue || totalToolValue || toolTypeLabel)
                 ? {
                     name: toolNameValue || undefined,
                     quantity: totalToolValue || undefined,
@@ -301,6 +308,7 @@ export default function TeachingSchedule() {
               gradeName: detail.gradeName,
               lectureType: statusLectureType,
               equipment,
+              scheduleDetailId: detail.id,
             };
           });
         }
@@ -311,9 +319,7 @@ export default function TeachingSchedule() {
         setTeachingScheduleId(null);
         setEmployeeName(null);
         setScheduleError(
-          error instanceof Error
-            ? `Không thể tải thời khóa biểu: ${error.message}`
-            : "Không thể tải thời khóa biểu"
+          error instanceof Error ? `Không thể tải thời khóa biểu: ${error.message}` : "Không thể tải thời khóa biểu"
         );
       } finally {
         setIsLoadingSchedule(false);
