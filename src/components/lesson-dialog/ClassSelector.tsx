@@ -1,4 +1,5 @@
 import type { ClassItem } from "@/lib/api";
+import { Spinner } from "@/components/ui/spinner";
 
 interface ClassSelectorProps {
   classes: ClassItem[];
@@ -10,7 +11,11 @@ interface ClassSelectorProps {
 
 export function ClassSelector({ classes, selectedClassId, isLoading, error, onSelect }: ClassSelectorProps) {
   if (isLoading) {
-    return <div className="h-24 w-full bg-muted rounded-md" />;
+    return (
+      <div className="h-24 w-full bg-muted rounded-md flex items-center justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
   if (error) {
@@ -29,7 +34,7 @@ export function ClassSelector({ classes, selectedClassId, isLoading, error, onSe
             onSelect(classItem.id);
           }}
           className={`
-            px-2 py-1.5 border-2 rounded-md cursor-pointer text-center text-xs
+            px-2 py-2 border-2 rounded-md cursor-pointer text-center text-xs
             transition-all duration-200
             ${
               selectedClassId === classItem.id
@@ -44,4 +49,3 @@ export function ClassSelector({ classes, selectedClassId, isLoading, error, onSe
     </div>
   );
 }
-

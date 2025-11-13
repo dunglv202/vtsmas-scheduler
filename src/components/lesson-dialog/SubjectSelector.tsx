@@ -16,10 +16,6 @@ export function SubjectSelector({
   error,
   onChange,
 }: SubjectSelectorProps) {
-  if (isLoading) {
-    return <div className="h-24 w-full bg-muted rounded-md" />;
-  }
-
   if (error) {
     return <div className="text-sm text-destructive">{error}</div>;
   }
@@ -34,7 +30,8 @@ export function SubjectSelector({
       options={options}
       value={selectedSubjectCode}
       onValueChange={onChange}
-      placeholder="Chọn môn học"
+      placeholder={isLoading ? "Đang tải môn học..." : "Chọn môn học"}
+      disabled={isLoading}
     />
   );
 }

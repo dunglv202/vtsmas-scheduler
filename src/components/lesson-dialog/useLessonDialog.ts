@@ -131,7 +131,7 @@ export function useLessonDialog({
   const [selectedLessonId, setSelectedLessonId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [selectedSubjectCode, setSelectedSubjectCode] = useState<string>(initialData?.subjectCode || "");
-  const [lectureType, setLectureType] = useState<string>(initialData?.lectureType || "");
+  const [lectureType, setLectureType] = useState<string>(initialData?.lectureType || "Dạy chính");
   const [equipmentName, setEquipmentName] = useState<string>(initialData?.equipment?.name || "");
   const [equipmentQuantity, setEquipmentQuantity] = useState<string>(initialData?.equipment?.quantity || "");
   const [equipmentType, setEquipmentType] = useState<string>(initialData?.equipment?.type || "");
@@ -198,7 +198,7 @@ export function useLessonDialog({
       setSelectedLessonId("");
       setSelectedSubjectCode("");
       setNotes("");
-      setLectureType("");
+      setLectureType("Dạy chính");
       setEquipmentName("");
       setEquipmentQuantity("");
       setEquipmentType("");
@@ -233,9 +233,12 @@ export function useLessonDialog({
         if (matchedClass) {
           setSelectedClassId(matchedClass.id);
         }
+      } else if (!initialData && classes.length > 0) {
+        // Auto-select first class when adding a new lecture
+        setSelectedClassId(classes[0].id);
       }
       setNotes(initialData?.description || "");
-      setLectureType(initialData?.lectureType || "");
+      setLectureType(initialData?.lectureType || "Dạy chính");
       setEquipmentName(initialData?.equipment?.name || "");
       setEquipmentQuantity(initialData?.equipment?.quantity || "");
       setEquipmentType(initialData?.equipment?.type || "");
@@ -252,7 +255,7 @@ export function useLessonDialog({
       if (template && template.subjectCode) {
         // Subject code is handled in the subject loading effect
         // Only set other template values here
-        setLectureType(template.lectureType);
+        setLectureType(template.lectureType || "Dạy chính");
         setEquipmentName(template.equipment.name || "");
         setEquipmentQuantity(template.equipment.quantity || "");
         setEquipmentType(template.equipment.type || "");
@@ -408,7 +411,7 @@ export function useLessonDialog({
   }, [isOpen, selectedClassId, selectedSubjectCode, classes, initialData]);
 
   useEffect(() => {
-    if (!isOpen || !selectedClassId) {
+    if (!isOpen || !selectedClassId || !selectedSubjectCode) {
       setPreviousLecture(null);
       setIsLoadingPreviousLecture(false);
       return;
@@ -514,6 +517,10 @@ export function useLessonDialog({
               return false;
             }
 
+            if (detail.subjectCode !== selectedSubjectCode) {
+              return false;
+            }
+
             if (cellDate) {
               const lectureDate = new Date(detail.dateStudy);
               const lectureDateOnly = new Date(
@@ -581,7 +588,7 @@ export function useLessonDialog({
         setPreviousLecture(null);
         setIsLoadingPreviousLecture(false);
       });
-  }, [isOpen, selectedClassId, cellInfo, weekDates]);
+  }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, weekDates]);
 
   useEffect(() => {
     if (!isOpen || !selectedClassId || !selectedSubjectCode || !cellInfo) {

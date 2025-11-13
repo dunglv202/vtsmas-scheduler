@@ -49,9 +49,9 @@ export function ExtrasAccordion({
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Loại tiết dạy</label>
-              <Select value={lectureType || undefined} onValueChange={(value) => setLectureType(value || "")}>
+              <Select value={lectureType} onValueChange={setLectureType}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Chọn loại tiết dạy" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Dạy chính">Dạy chính</SelectItem>

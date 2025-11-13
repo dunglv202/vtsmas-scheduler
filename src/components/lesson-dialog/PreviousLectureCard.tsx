@@ -1,4 +1,5 @@
 import type { TeachingScheduleDetail } from "@/lib/api";
+import { Spinner } from "@/components/ui/spinner";
 import { formatDateForPreviousLecture, formatPeriodLabel, getSessionName } from "./utils";
 
 interface PreviousLectureCardProps {
@@ -8,12 +9,16 @@ interface PreviousLectureCardProps {
 
 export function PreviousLectureCard({ previousLecture, isLoading }: PreviousLectureCardProps) {
   if (isLoading) {
-    return <div className="h-24 w-full bg-muted rounded-md" />;
+    return (
+      <div className="h-23 w-full bg-muted rounded-md flex items-center justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
   if (!previousLecture) {
     return (
-      <div className="text-sm text-muted-foreground p-3 border border-border rounded-md bg-muted h-24 flex items-center">
+      <div className="text-sm text-muted-foreground p-3 border border-border rounded-md bg-muted h-23 flex items-center">
         Không tìm thấy tiết dạy trước
       </div>
     );
@@ -40,4 +45,3 @@ export function PreviousLectureCard({ previousLecture, isLoading }: PreviousLect
     </div>
   );
 }
-

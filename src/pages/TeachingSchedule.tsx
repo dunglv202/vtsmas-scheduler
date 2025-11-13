@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Spinner } from "@/components/ui/spinner";
 import { fetchClasses, fetchTeachingSchedule, type ClassItem, type TeachingScheduleDetail } from "@/lib/api";
-import { CalendarIcon, Filter } from "lucide-react";
+import { CalendarIcon, Filter, RefreshCw } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -57,6 +58,15 @@ function formatDate(date: Date): string {
   const day = date.getDate().toString().padStart(2, "0");
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
   return `${day}/${month}`;
+}
+
+// Check if two dates are the same day
+function isSameDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
 }
 
 // Format week range for display (e.g., "Jan 1 - Jan 7, 2024")
@@ -230,6 +240,11 @@ export default function TeachingSchedule() {
     setSelectedDate(new Date());
   };
 
+  // Reload schedule for current week
+  const handleReload = () => {
+    setRefreshCounter((prev) => prev + 1);
+  };
+
   // Fetch teaching schedule from API
   useEffect(() => {
     const loadSchedule = async () => {
@@ -344,7 +359,7 @@ export default function TeachingSchedule() {
         <h1 className="text-3xl font-bold text-center mb-4">Thời khóa biểu giảng dạy</h1>
 
         {/* Filters and Week Selector */}
-        <div className="flex items-center justify-center gap-4 mb-4">
+        <div className="flex items-center justify-center gap-4">
           {/* Class Filter */}
           <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
             <PopoverTrigger asChild>
@@ -455,6 +470,10 @@ export default function TeachingSchedule() {
           <Button onClick={handleToday} variant="default">
             Hôm nay
           </Button>
+
+          <Button onClick={handleReload} variant="outline" aria-label="Tải lại thời khóa biểu">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
 
         {scheduleError && <div className="text-center text-sm text-destructive mt-2">Lỗi: {scheduleError}</div>}
@@ -466,27 +485,25 @@ export default function TeachingSchedule() {
         </div>
         {DAYS.map((day, index) => {
           const date = weekDates[index];
+          const isToday = isSameDay(date, new Date());
           return (
             <div
               key={day}
-              className="bg-muted p-3 font-semibold text-center border-r border-b border-border sticky top-0 z-10 last:border-r-0"
+              className={`p-3 font-semibold text-center border-r border-b border-border sticky top-0 z-10 last:border-r-0 ${
+                isToday ? "bg-primary text-primary-foreground" : "bg-muted"
+              }`}
             >
               <div className="text-sm">{DAY_ABBREVIATIONS[index]}</div>
-              <div className="text-xs text-muted-foreground mt-1">{formatDate(date)}</div>
+              <div className={`text-xs mt-1 ${isToday ? "text-primary-foreground" : "text-muted-foreground"}`}>
+                {formatDate(date)}
+              </div>
             </div>
           );
         })}
 
         {isLoadingSchedule ? (
           <div className="col-span-8 flex items-center justify-center py-6">
-            <svg className="mr-3 size-5 animate-spin text-primary" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
+            <Spinner className="mr-3" />
             <span className="text-sm text-muted-foreground">Đang tải thời khóa biểu...</span>
           </div>
         ) : (
@@ -510,7 +527,7 @@ export default function TeachingSchedule() {
                       key={`${day}-${rowIndex}`}
                       onClick={() => handleCellClick(day, row.session, row.period)}
                       className={`
-                      p-2 min-h-[80px] border-r border-b border-border cursor-pointer
+                      p-2 h-24 border-r border-b border-border cursor-pointer
                       hover:bg-accent transition-colors
                       ${lesson ? "bg-accent/50" : "bg-background"}
                       ${dayIndex === DAYS.length - 1 ? "border-r-0" : ""}
@@ -518,6 +535,7 @@ export default function TeachingSchedule() {
                     >
                       {lesson && (
                         <div className="text-xs space-y-1">
+                          {lesson.subject && <div className="font-medium text-foreground">{lesson.subject}</div>}
                           {lesson.lesson && (
                             <div className="font-semibold text-foreground line-clamp-2">
                               {lesson.lessonPeriod !== undefined && `Tiết ${lesson.lessonPeriod} - `}

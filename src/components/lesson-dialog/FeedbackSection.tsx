@@ -1,4 +1,5 @@
 import type { LessonFeedbackDetail } from "@/lib/api";
+import { Spinner } from "@/components/ui/spinner";
 
 interface FeedbackSectionProps {
   shouldShow: boolean;
@@ -19,7 +20,9 @@ export function FeedbackSection({ shouldShow, isLoading, feedback, error }: Feed
         <p className="text-xs text-muted-foreground">Dữ liệu lấy từ sổ đầu bài tuần.</p>
       </div>
       {isLoading ? (
-        <div className="h-24 w-full bg-muted rounded-md" />
+        <div className="h-24 w-full bg-muted rounded-md flex items-center justify-center">
+          <Spinner />
+        </div>
       ) : error ? (
         <p className="text-sm text-destructive">{error}</p>
       ) : feedback ? (
