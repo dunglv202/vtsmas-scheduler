@@ -70,6 +70,7 @@ export async function fetchSubjects(schoolLevelCode: string = "03"): Promise<Sub
       method: "GET",
       headers: {
         Authorization: `Bearer ${tokens.access_token}`,
+        "Accept-Language": "vi",
       },
     }
   );
@@ -192,6 +193,7 @@ export async function fetchCurriculum(filter?: CurriculumFilter): Promise<Curric
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${tokens.access_token}`,
+      "Accept-Language": "vi",
     },
     body: JSON.stringify(requestBody),
   });
@@ -298,6 +300,7 @@ export async function fetchClasses(filter?: ClassFilter): Promise<ClassResponse>
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${tokens.access_token}`,
+      "Accept-Language": "vi",
     },
     body: JSON.stringify(requestBody),
   });
@@ -334,6 +337,13 @@ export interface TeachingScheduleDetail {
   divisiveConfigurationName: string | null;
   section: number;
   description?: string;
+  status?: number;
+  isRegisterLearningTool?: boolean;
+  toolName?: string | null;
+  totalTool?: string | null;
+  toolType?: number | null;
+  employeeSubstituteId?: string | null;
+  employeeSubstituteName?: string | null;
   [key: string]: unknown;
 }
 
@@ -385,6 +395,7 @@ export async function fetchTeachingSchedule(
       method: "GET",
       headers: {
         Authorization: `Bearer ${tokens.access_token}`,
+        "Accept-Language": "vi",
       },
     }
   );
@@ -407,6 +418,61 @@ export async function fetchTeachingSchedule(
   }
 
   return JSON.parse(responseText) as TeachingScheduleResponse;
+}
+
+export interface CreateTeachingScheduleDetailRequest {
+  dayOfWeek: number;
+  section: number;
+  period: number;
+  classId: string;
+  className: string;
+  gradeCode: string;
+  gradeName: string;
+  subjectCode: string;
+  subjectName: string;
+  description: string | null;
+  divisiveConfigurationId: string | null;
+  divisiveConfigurationName: string | null;
+  distributeProgramId: string;
+  distributeProgramPeriod: string;
+  isRegisterLearningTool: boolean;
+  toolName: string | null;
+  totalTool: string | null;
+  toolType: number | null;
+  distributeProgramName: string;
+  status: number;
+  employeeSubstituteId: string;
+  teachingScheduleId: string;
+  dateStudy: string;
+  employeeId: string;
+  employeeName: string;
+  employeeSubstituteName: string;
+}
+
+export async function createTeachingScheduleDetail(
+  payload: CreateTeachingScheduleDetailRequest
+): Promise<void> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const response = await fetch("https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/tao/tung-chi-tiet", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tokens.access_token}`,
+      "Content-Type": "application/json",
+      "Accept-Language": "vi",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to create teaching schedule detail: ${response.status} ${response.statusText}. ${errorText}`
+    );
+  }
 }
 
 export interface LessonFeedbackRequest {
@@ -477,6 +543,7 @@ export async function fetchLessonFeedback(payload: LessonFeedbackRequest): Promi
     headers: {
       Authorization: `Bearer ${tokens.access_token}`,
       "Content-Type": "application/json",
+      "Accept-Language": "vi",
     },
     body: JSON.stringify(payload),
   });

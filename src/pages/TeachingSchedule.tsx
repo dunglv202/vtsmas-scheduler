@@ -16,6 +16,18 @@ const SESSION_LABELS: Record<string, string> = {
 };
 const PERIODS_PER_SESSION = 5;
 
+const STATUS_TO_LECTURE_TYPE: Record<number, string> = {
+  3: "Dạy chính",
+  1: "Dạy bù",
+  4: "Dạy thay",
+};
+
+const TOOL_TYPE_TO_LABEL: Record<number, string> = {
+  1: "Phòng trực ban",
+  2: "tự làm",
+  3: "tại lớp",
+};
+
 // Get week's dates (Monday to Sunday) from a given date
 function getWeekDatesFromDate(date: Date): Date[] {
   const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -97,6 +109,9 @@ export default function TeachingSchedule() {
   const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
+  const [teachingScheduleId, setTeachingScheduleId] = useState<string | null>(null);
+  const [employeeName, setEmployeeName] = useState<string | null>(null);
+  const [refreshCounter, setRefreshCounter] = useState(0);
 
   // Update week dates when selected date changes
   useEffect(() => {
@@ -137,6 +152,7 @@ export default function TeachingSchedule() {
         ...prev,
         [key]: lessonInfo,
       }));
+      setRefreshCounter((prev) => prev + 1);
     }
     setIsDialogOpen(false);
     setSelectedCell(null);
@@ -223,6 +239,14 @@ export default function TeachingSchedule() {
 
         const response = await fetchTeachingSchedule(fromDate, toDate, employeeId, schoolYearId, schoolLevelCode);
 
+        if (response) {
+          setTeachingScheduleId(response.id);
+          setEmployeeName(response.employeeName);
+        } else {
+          setTeachingScheduleId(null);
+          setEmployeeName(null);
+        }
+
         // Map API response to schedule cells
         const scheduleMap: Record<string, LessonInfo> = {};
 
@@ -242,13 +266,41 @@ export default function TeachingSchedule() {
             const key = getCellKey(dayName, sessionName, period);
 
             // Map to LessonInfo
+            const statusLectureType =
+              typeof detail.status === "number" ? STATUS_TO_LECTURE_TYPE[detail.status] : undefined;
+            const toolTypeLabel =
+              typeof detail.toolType === "number" ? TOOL_TYPE_TO_LABEL[detail.toolType] : undefined;
+            const toolNameValue =
+              detail.toolName !== undefined && detail.toolName !== null
+                ? String(detail.toolName).trim()
+                : "";
+            const totalToolValue =
+              detail.totalTool !== undefined && detail.totalTool !== null
+                ? String(detail.totalTool).trim()
+                : "";
+            const equipment =
+              detail.isRegisterLearningTool &&
+              (toolNameValue || totalToolValue || toolTypeLabel)
+                ? {
+                    name: toolNameValue || undefined,
+                    quantity: totalToolValue || undefined,
+                    type: toolTypeLabel,
+                  }
+                : undefined;
+
             scheduleMap[key] = {
               lesson: detail.distributeProgramName || detail.subjectName || "",
+              lessonId: detail.distributeProgramId,
               class: detail.className || "",
+              classId: detail.classId,
               description: detail.description || "",
               subject: detail.subjectName || "",
               subjectCode: detail.subjectCode || "",
               lessonPeriod: detail.distributeProgramPeriod,
+              gradeCode: detail.gradeCode,
+              gradeName: detail.gradeName,
+              lectureType: statusLectureType,
+              equipment,
             };
           });
         }
@@ -256,6 +308,8 @@ export default function TeachingSchedule() {
         setSchedule(scheduleMap);
       } catch (error) {
         console.error("Failed to fetch teaching schedule:", error);
+        setTeachingScheduleId(null);
+        setEmployeeName(null);
         setScheduleError(
           error instanceof Error
             ? `Không thể tải thời khóa biểu: ${error.message}`
@@ -267,7 +321,7 @@ export default function TeachingSchedule() {
     };
 
     loadSchedule();
-  }, [weekDates]);
+  }, [weekDates, refreshCounter]);
 
   // Generate rows: 3 sessions × 5 periods = 15 rows
   const rows: Array<{ session: string; period: number }> = [];
@@ -473,6 +527,8 @@ export default function TeachingSchedule() {
         }
         cellInfo={selectedCell}
         weekDates={weekDates}
+        teachingScheduleId={teachingScheduleId}
+        employeeName={employeeName}
       />
     </div>
   );

@@ -15,6 +15,8 @@ import {
   fetchTeachingSchedule,
   fetchSubjects,
   fetchLessonFeedback,
+  createTeachingScheduleDetail,
+  type CreateTeachingScheduleDetailRequest,
   type CurriculumItem,
   type ClassItem,
   type TeachingScheduleDetail,
@@ -31,11 +33,15 @@ export interface LessonEquipment {
 
 export interface LessonInfo {
   lesson?: string;
+  lessonId?: string;
   class?: string;
+  classId?: string;
   description?: string;
   subject?: string;
   subjectCode?: string;
   lessonPeriod?: number; // distributeProgramPeriod from API
+  gradeCode?: string;
+  gradeName?: string;
   lectureType?: string;
   equipment?: LessonEquipment;
 }
@@ -54,6 +60,8 @@ interface LessonDialogProps {
   initialData?: LessonInfo;
   cellInfo: ScheduleCell | null;
   weekDates?: Date[];
+  teachingScheduleId?: string | null;
+  employeeName?: string | null;
 }
 
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
@@ -74,6 +82,74 @@ const SESSION_LABEL_MAP: Record<string, string> = {
   Evening: "Buổi tối",
 };
 
+const SESSION_NAME_TO_NUMBER: Record<string, number> = {
+  Morning: 0,
+  Afternoon: 1,
+  Evening: 2,
+};
+
+const ZERO_GUID = "00000000-0000-0000-0000-000000000000";
+const DEFAULT_EMPLOYEE_ID = "3a1c68da-2f33-aae3-a9d2-4cd8b7aba805";
+
+const normalizeVietnamese = (value?: string): string | null => {
+  if (!value) {
+    return null;
+  }
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+};
+
+const mapLectureTypeToStatus = (lectureType?: string): number => {
+  const normalized = normalizeVietnamese(lectureType);
+  switch (normalized) {
+    case "day bu":
+      return 1;
+    case "day thay":
+      return 4;
+    case "day chinh":
+    default:
+      return 3;
+  }
+};
+
+const mapLectureTypeToDivisiveName = (lectureType?: string): string | null => {
+  const normalized = normalizeVietnamese(lectureType);
+  switch (normalized) {
+    case "day bu":
+      return "Bù";
+    case "day thay":
+      return "Thay";
+    case "day chinh":
+      return "Chính";
+    default:
+      return lectureType ? lectureType : "Chính";
+  }
+};
+
+const mapEquipmentTypeToToolType = (equipmentType?: string): number | null => {
+  const normalized = normalizeVietnamese(equipmentType);
+  switch (normalized) {
+    case "phong truc ban":
+      return 1;
+    case "tu lam":
+      return 2;
+    case "tai lop":
+      return 3;
+    default:
+      return null;
+  }
+};
+
+const formatDateForSchedulePayload = (date: Date): string => {
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 const translateDay = (day: string): string => {
   return DAY_LABEL_MAP[day as (typeof DAY_ORDER)[number]] ?? day;
 };
@@ -82,7 +158,16 @@ const translateSession = (session: string): string => {
   return SESSION_LABEL_MAP[session] ?? session;
 };
 
-export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, weekDates }: LessonDialogProps) {
+export function LessonDialog({
+  isOpen,
+  onClose,
+  onSave,
+  initialData,
+  cellInfo,
+  weekDates,
+  teachingScheduleId,
+  employeeName,
+}: LessonDialogProps) {
   const hasInitialExtras =
     Boolean(initialData?.lectureType) ||
     Boolean(initialData?.equipment?.name) ||
@@ -113,6 +198,8 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [previousLecture, setPreviousLecture] = useState<TeachingScheduleDetail | null>(null);
   const [feedback, setFeedback] = useState<LessonFeedbackDetail | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const hasInitializedRef = useRef(false);
   const hasInitializedSubjectRef = useRef(false);
   const previousInitialDataRef = useRef<LessonInfo | undefined>(undefined);
@@ -175,6 +262,8 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
   // Fetch classes when dialog opens
   useEffect(() => {
     if (isOpen) {
+      setSaveError(null);
+      setIsSaving(false);
       // Reset initialization flag when dialog opens or initialData changes
       if (previousInitialDataRef.current !== initialData) {
         hasInitializedRef.current = false;
@@ -224,6 +313,8 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
       setIsLoadingFeedback(false);
       setPreviousLecture(null);
       setIsLoadingPreviousLecture(false);
+      setSaveError(null);
+      setIsSaving(false);
     }
   }, [isOpen, initialData]);
 
@@ -232,7 +323,12 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
     if (isOpen && classes.length > 0 && !hasInitializedRef.current) {
       hasInitializedRef.current = true;
       // Match the saved class name to find the class ID
-      if (initialData?.class) {
+      if (initialData?.classId) {
+        const matchedClass = classes.find((cls) => cls.id === initialData.classId);
+        if (matchedClass) {
+          setSelectedClassId(matchedClass.id);
+        }
+      } else if (initialData?.class) {
         const matchedClass = classes.find((cls) => cls.className === initialData.class);
         if (matchedClass) {
           setSelectedClassId(matchedClass.id);
@@ -329,7 +425,11 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
           if (matchedClass && matchedClass.className === initialData.class) {
             let matchedLesson = null;
 
-            if (initialData.lessonPeriod !== undefined) {
+            if (initialData.lessonId) {
+              matchedLesson = response.items.find((lesson) => lesson.id === initialData.lessonId) || null;
+            }
+
+            if (!matchedLesson && initialData.lessonPeriod !== undefined) {
               matchedLesson = response.items.find((lesson) => lesson.period === initialData.lessonPeriod);
             }
 
@@ -447,20 +547,13 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
         }
       }
 
-      const sessionNameToNumber: Record<string, number> = {
-        Morning: 0,
-        Afternoon: 1,
-        Evening: 2,
-      };
-      cellSession = sessionNameToNumber[cellInfo.session] ?? null;
+      cellSession = SESSION_NAME_TO_NUMBER[cellInfo.session] ?? null;
     }
 
     const schoolYearId = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
-    const employeeId = "3a1c68da-2f33-aae3-a9d2-4cd8b7aba805";
-
     Promise.all([
-      fetchTeachingSchedule(previousWeekFrom, previousWeekTo, employeeId, schoolYearId, "03"),
-      fetchTeachingSchedule(currentWeekFrom, currentWeekTo, employeeId, schoolYearId, "03"),
+      fetchTeachingSchedule(previousWeekFrom, previousWeekTo, DEFAULT_EMPLOYEE_ID, schoolYearId, "03"),
+      fetchTeachingSchedule(currentWeekFrom, currentWeekTo, DEFAULT_EMPLOYEE_ID, schoolYearId, "03"),
     ])
       .then(
         ([previousWeekResponse, currentWeekResponse]: [
@@ -589,12 +682,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
       return `${year}-${month}-${day}`;
     };
 
-    const sessionNameToNumber: Record<string, number> = {
-      Morning: 0,
-      Afternoon: 1,
-      Evening: 2,
-    };
-    const cellSession = sessionNameToNumber[cellInfo.session];
+    const cellSession = SESSION_NAME_TO_NUMBER[cellInfo.session];
 
     const dayNameToOffset: Record<string, number> = {
       Monday: 0,
@@ -690,39 +778,127 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
     }
   }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, classes, weekDates]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
+
+    if (!cellInfo) {
+      setSaveError("Không xác định được vị trí tiết dạy.");
+      return;
+    }
+
     // Find the selected class to get its display name
     const selectedClassItem = classes.find((cls) => cls.id === selectedClassId);
-    const className = selectedClassItem?.className || "";
+    if (!selectedClassItem) {
+      setSaveError("Vui lòng chọn lớp học.");
+      return;
+    }
 
     // Find the selected lesson to get its display name
     const selectedLessonItem = lessons.find((lesson) => lesson.id === selectedLesson);
-    const lessonDisplayName = selectedLessonItem
-      ? `${selectedLessonItem.period} - ${selectedLessonItem.name}`
-      : selectedLesson;
+    if (!selectedLessonItem) {
+      setSaveError("Vui lòng chọn tiết học.");
+      return;
+    }
+    const lessonDisplayName = `${selectedLessonItem.period} - ${selectedLessonItem.name}`;
 
     const selectedSubjectItem = subjects.find((subject) => subject.cateCode === selectedSubjectCode);
-    const subjectName = selectedSubjectItem?.cateName || "";
+    if (!selectedSubjectItem) {
+      setSaveError("Vui lòng chọn môn học.");
+      return;
+    }
 
-    const equipmentInfo =
-      equipmentName || equipmentQuantity || equipmentType
+    const dayIndex = DAY_ORDER.indexOf(cellInfo.day as (typeof DAY_ORDER)[number]);
+    if (dayIndex < 0) {
+      setSaveError("Không xác định được ngày học.");
+      return;
+    }
+
+    if (!weekDates || !weekDates[dayIndex]) {
+      setSaveError("Không xác định được ngày học cho tiết này.");
+      return;
+    }
+
+    const selectedDate = weekDates[dayIndex];
+    const targetDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+    targetDate.setHours(0, 0, 0, 0);
+
+    const dateStudy = formatDateForSchedulePayload(targetDate);
+    const dayOfWeek = dayIndex + 1;
+    const section = SESSION_NAME_TO_NUMBER[cellInfo.session] ?? 0;
+    const trimmedNotes = notes.trim();
+    const trimmedEquipmentName = equipmentName.trim();
+    const trimmedEquipmentQuantity = equipmentQuantity.trim();
+    const isRegisterLearningTool = Boolean(trimmedEquipmentName || trimmedEquipmentQuantity || equipmentType);
+    const toolTypeValue = mapEquipmentTypeToToolType(equipmentType);
+
+    if (isRegisterLearningTool && toolTypeValue === null) {
+      setSaveError("Vui lòng chọn loại thiết bị.");
+      return;
+    }
+
+    const payload: CreateTeachingScheduleDetailRequest = {
+      dayOfWeek,
+      section,
+      period: cellInfo.period,
+      classId: selectedClassItem.id,
+      className: selectedClassItem.className,
+      gradeCode: selectedClassItem.gradeLevelCode,
+      gradeName: selectedClassItem.gradeLevel,
+      subjectCode: selectedSubjectItem.cateCode,
+      subjectName: selectedSubjectItem.cateName,
+      description: trimmedNotes || null,
+      divisiveConfigurationId: null,
+      divisiveConfigurationName: mapLectureTypeToDivisiveName(lectureType),
+      distributeProgramId: selectedLessonItem.id || ZERO_GUID,
+      distributeProgramPeriod: String(selectedLessonItem.period ?? ""),
+      distributeProgramName: selectedLessonItem.name,
+      isRegisterLearningTool,
+      toolName: isRegisterLearningTool ? trimmedEquipmentName || null : null,
+      totalTool: isRegisterLearningTool ? trimmedEquipmentQuantity || null : null,
+      toolType: isRegisterLearningTool ? toolTypeValue : null,
+      status: mapLectureTypeToStatus(lectureType),
+      employeeSubstituteId: ZERO_GUID,
+      teachingScheduleId: teachingScheduleId || ZERO_GUID,
+      dateStudy,
+      employeeId: DEFAULT_EMPLOYEE_ID,
+      employeeName: employeeName || "",
+      employeeSubstituteName: "",
+    };
+
+    setIsSaving(true);
+
+    try {
+      await createTeachingScheduleDetail(payload);
+
+      const equipmentInfo = isRegisterLearningTool
         ? {
-            name: equipmentName || undefined,
-            quantity: equipmentQuantity || undefined,
+            name: trimmedEquipmentName || undefined,
+            quantity: trimmedEquipmentQuantity || undefined,
             type: equipmentType || undefined,
           }
         : undefined;
 
-    onSave({
-      lesson: lessonDisplayName,
-      class: className,
-      description: notes,
-      subject: subjectName,
-      subjectCode: selectedSubjectCode,
-      lectureType: lectureType || undefined,
-      equipment: equipmentInfo,
-    });
+      onSave({
+        lesson: lessonDisplayName,
+        lessonId: selectedLessonItem.id,
+        class: selectedClassItem.className,
+        classId: selectedClassItem.id,
+        description: trimmedNotes,
+        subject: selectedSubjectItem.cateName,
+        subjectCode: selectedSubjectItem.cateCode,
+        lessonPeriod: selectedLessonItem.period,
+        gradeCode: selectedClassItem.gradeLevelCode,
+        gradeName: selectedClassItem.gradeLevel,
+        lectureType: lectureType || undefined,
+        equipment: equipmentInfo,
+      });
+    } catch (error) {
+      console.error("Failed to create teaching schedule detail:", error);
+      setSaveError(error instanceof Error ? error.message : "Không thể lưu tiết dạy. Vui lòng kiểm tra lại thông tin.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getDialogTitle = () => {
@@ -993,11 +1169,19 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
               </AccordionItem>
             </Accordion>
 
+            {saveError && (
+              <p className="text-sm text-destructive" role="alert">
+                {saveError}
+              </p>
+            )}
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
                 Hủy
               </Button>
-              <Button type="submit">Lưu</Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Đang lưu..." : "Lưu"}
+              </Button>
             </DialogFooter>
           </form>
         </div>
