@@ -1,4 +1,5 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Minus } from "lucide-react";
 
 interface ExtrasAccordionProps {
@@ -46,16 +47,19 @@ export function ExtrasAccordion({
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Loại tiết dạy</label>
-              <select
-                value={lectureType}
-                onChange={(event) => setLectureType(event.target.value)}
-                className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+              <Select
+                value={lectureType || undefined}
+                onValueChange={(value) => setLectureType(value || "")}
               >
-                <option value="">Chọn loại tiết dạy</option>
-                <option value="Dạy chính">Dạy chính</option>
-                <option value="Dạy thay">Dạy thay</option>
-                <option value="Dạy bù">Dạy bù</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Chọn loại tiết dạy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Dạy chính">Dạy chính</SelectItem>
+                  <SelectItem value="Dạy thay">Dạy thay</SelectItem>
+                  <SelectItem value="Dạy bù">Dạy bù</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-3">
@@ -77,22 +81,25 @@ export function ExtrasAccordion({
                     min="0"
                     value={equipmentQuantity}
                     onChange={(event) => setEquipmentQuantity(event.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+                    className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder="0"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Loại thiết bị</label>
-                  <select
-                    value={equipmentType}
-                    onChange={(event) => setEquipmentType(event.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+                  <Select
+                    value={equipmentType || undefined}
+                    onValueChange={(value) => setEquipmentType(value || "")}
                   >
-                    <option value="">Chọn loại thiết bị</option>
-                    <option value="tại lớp">Tại lớp</option>
-                    <option value="tự làm">Tự làm</option>
-                    <option value="Phòng trực ban">Phòng trực ban</option>
-                  </select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Chọn loại thiết bị" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tại lớp">Tại lớp</SelectItem>
+                      <SelectItem value="tự làm">Tự làm</SelectItem>
+                      <SelectItem value="Phòng trực ban">Phòng trực ban</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

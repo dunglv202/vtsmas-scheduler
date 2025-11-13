@@ -1,4 +1,5 @@
 import type { SubjectItem } from "@/lib/api";
+import { Combobox } from "@/components/ui/combobox";
 
 interface SubjectSelectorProps {
   subjects: SubjectItem[];
@@ -23,20 +24,18 @@ export function SubjectSelector({
     return <div className="text-sm text-destructive">{error}</div>;
   }
 
+  const options = subjects.map((subject) => ({
+    value: subject.cateCode,
+    label: subject.cateName,
+  }));
+
   return (
-    <select
-      id="subject"
+    <Combobox
+      options={options}
       value={selectedSubjectCode}
-      onChange={(event) => onChange(event.target.value)}
-      className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
-    >
-      <option value="">Chọn môn học</option>
-      {subjects.map((subject) => (
-        <option key={subject.cateCode} value={subject.cateCode}>
-          {subject.cateName}
-        </option>
-      ))}
-    </select>
+      onValueChange={onChange}
+      placeholder="Chọn môn học"
+    />
   );
 }
 

@@ -1,4 +1,5 @@
 import type { CurriculumItem } from "@/lib/api";
+import { Combobox } from "@/components/ui/combobox";
 
 interface LessonSelectorProps {
   lessons: CurriculumItem[];
@@ -29,24 +30,23 @@ export function LessonSelector({
     ? "Chọn tiết học"
     : "Không có tiết học";
 
+  const options = lessons.map((lesson) => ({
+    value: lesson.id,
+    label: `${lesson.period} - ${lesson.name}`,
+  }));
+
   return (
     <div className="space-y-2">
       <label htmlFor="lesson" className="text-sm font-medium">
         Tiết học
       </label>
-      <select
-        id="lesson"
+      <Combobox
+        options={options}
         value={selectedLessonId}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background disabled:bg-muted disabled:cursor-not-allowed"
-      >
-        <option value="">{placeholder}</option>
-        {lessons.map((lesson) => (
-          <option key={lesson.id} value={lesson.id}>
-            {lesson.period} - {lesson.name}
-          </option>
-        ))}
-      </select>
+        onValueChange={onChange}
+        placeholder={placeholder}
+        disabled={!selectedClassId || !selectedSubjectCode || isLoading}
+      />
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
