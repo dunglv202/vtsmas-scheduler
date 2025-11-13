@@ -49,6 +49,30 @@ interface LessonDialogProps {
 
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 
+const DAY_LABEL_MAP: Record<(typeof DAY_ORDER)[number], string> = {
+  Monday: "Thứ Hai",
+  Tuesday: "Thứ Ba",
+  Wednesday: "Thứ Tư",
+  Thursday: "Thứ Năm",
+  Friday: "Thứ Sáu",
+  Saturday: "Thứ Bảy",
+  Sunday: "Chủ Nhật",
+};
+
+const SESSION_LABEL_MAP: Record<string, string> = {
+  Morning: "Buổi sáng",
+  Afternoon: "Buổi chiều",
+  Evening: "Buổi tối",
+};
+
+const translateDay = (day: string): string => {
+  return DAY_LABEL_MAP[day as (typeof DAY_ORDER)[number]] ?? day;
+};
+
+const translateSession = (session: string): string => {
+  return SESSION_LABEL_MAP[session] ?? session;
+};
+
 export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, weekDates }: LessonDialogProps) {
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedLesson, setSelectedLesson] = useState<string>("");
@@ -89,9 +113,10 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
       2: "Evening",
     };
 
-    // If session is in the map, return it
+    // If session is in the map, return the localized label
     if (sessionMap[sessionNumber] !== undefined) {
-      return sessionMap[sessionNumber];
+      const sessionName = sessionMap[sessionNumber];
+      return translateSession(sessionName);
     }
 
     // If we have dateStudy, try to determine from time
@@ -99,22 +124,20 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
       const date = new Date(dateStudy);
       const hour = date.getHours();
       if (hour < 12) {
-        return "Morning";
+        return translateSession("Morning");
       } else if (hour < 17) {
-        return "Afternoon";
+        return translateSession("Afternoon");
       } else {
-        return "Evening";
+        return translateSession("Evening");
       }
     }
 
-    return `Session ${sessionNumber}`;
+    return `Buổi ${sessionNumber}`;
   };
 
-  // Helper function to format period number as ordinal (1st, 2nd, 3rd, etc.)
-  const formatPeriodNumber = (num: number): string => {
-    const suffix = ["th", "st", "nd", "rd"];
-    const v = num % 100;
-    return num + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
+  // Helper function to format period number for display
+  const formatPeriodLabel = (num: number): string => {
+    return `Tiết ${num}`;
   };
 
   // Helper function to format date
@@ -150,7 +173,11 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
           setIsLoadingClasses(false);
         })
         .catch((error) => {
-          setClassError(error instanceof Error ? error.message : "Failed to load classes");
+          setClassError(
+            error instanceof Error
+              ? `Không thể tải danh sách lớp học: ${error.message}`
+              : "Không thể tải danh sách lớp học"
+          );
           setIsLoadingClasses(false);
         });
     } else {
@@ -216,7 +243,11 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
           setIsLoadingSubjects(false);
         })
         .catch((error) => {
-          setSubjectError(error instanceof Error ? error.message : "Failed to load subjects");
+          setSubjectError(
+            error instanceof Error
+              ? `Không thể tải danh sách môn học: ${error.message}`
+              : "Không thể tải danh sách môn học"
+          );
           setIsLoadingSubjects(false);
         });
     }
@@ -295,7 +326,11 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
         }
       })
       .catch((error) => {
-        setLessonError(error instanceof Error ? error.message : "Failed to load lessons");
+        setLessonError(
+          error instanceof Error
+            ? `Không thể tải danh sách tiết học: ${error.message}`
+            : "Không thể tải danh sách tiết học"
+        );
         setIsLoadingLessons(false);
       });
   }, [isOpen, selectedClassId, selectedSubjectCode, classes, initialData]);
@@ -604,7 +639,11 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
         .catch((error) => {
           console.error("Failed to fetch lecture feedback:", error);
           setFeedback(null);
-          setFeedbackError(error instanceof Error ? error.message : "Failed to load lecture feedback");
+          setFeedbackError(
+            error instanceof Error
+              ? `Không thể tải nhận xét tiết dạy: ${error.message}`
+              : "Không thể tải nhận xét tiết dạy"
+          );
           setIsLoadingFeedback(false);
         });
     } else {
@@ -638,8 +677,10 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
   };
 
   const getDialogTitle = () => {
-    if (!cellInfo) return "Add Lesson";
-    return `${cellInfo.day} - ${cellInfo.session} - Period ${cellInfo.period}`;
+    if (!cellInfo) return "Thêm tiết học";
+    const dayLabel = translateDay(cellInfo.day);
+    const sessionLabel = translateSession(cellInfo.session);
+    return `${dayLabel} - ${sessionLabel} - Tiết ${cellInfo.period}`;
   };
 
   const shouldShowFeedback = Boolean(feedback) || Boolean(feedbackError);
@@ -652,15 +693,15 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
       >
         <DialogHeader>
           <DialogTitle>{getDialogTitle()}</DialogTitle>
-          <DialogDescription>Fill in the lesson information for this time slot.</DialogDescription>
+          <DialogDescription>Điền thông tin tiết học cho khung giờ này.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 overflow-y-auto px-1 scrollbar-surface">
           {shouldShowFeedback && (
             <section className="rounded-md border border-border bg-card p-4 space-y-3">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Lecture Feedback</h3>
-                <p className="text-xs text-muted-foreground">Retrieved from the weekly lesson assessment book.</p>
+                <h3 className="text-sm font-semibold text-foreground">Nhận xét tiết dạy</h3>
+                <p className="text-xs text-muted-foreground">Dữ liệu lấy từ sổ đầu bài tuần.</p>
               </div>
               {isLoadingFeedback ? (
                 <div className="h-24 w-full bg-muted rounded-md" />
@@ -669,13 +710,13 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
               ) : feedback ? (
                 <div className="space-y-3 text-sm">
                   <div>
-                    <div className="font-medium text-foreground">Period {feedback.distributeProgramPeriod}</div>
+                    <div className="font-medium text-foreground">Tiết {feedback.distributeProgramPeriod}</div>
                     <div className="text-muted-foreground text-xs">{feedback.distributeProgramName}</div>
                   </div>
                   {feedback.teachingComment && (
                     <div>
                       <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Teacher&apos;s comment
+                        Nhận xét của giáo viên
                       </div>
                       <div className="text-sm text-foreground">{feedback.teachingComment}</div>
                     </div>
@@ -688,9 +729,9 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Class Selection - Radio buttons styled as rectangular buttons */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Class</label>
+              <label className="text-sm font-medium">Lớp</label>
               {isLoadingClasses ? (
-                <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
+                <div className="h-24 w-full bg-muted rounded-md" />
               ) : classError ? (
                 <div className="text-sm text-destructive">{classError}</div>
               ) : (
@@ -723,9 +764,9 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
 
             {/* Subject Selection */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Subject</label>
+              <label className="text-sm font-medium">Môn học</label>
               {isLoadingSubjects ? (
-                <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
+                <div className="h-24 w-full bg-muted rounded-md" />
               ) : subjectError ? (
                 <div className="text-sm text-destructive">{subjectError}</div>
               ) : (
@@ -735,7 +776,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
                   onChange={(e) => setSelectedSubjectCode(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
                 >
-                  <option value="">Select a subject</option>
+                  <option value="">Chọn môn học</option>
                   {subjects.map((subject) => (
                     <option key={subject.cateCode} value={subject.cateCode}>
                       {subject.cateName}
@@ -748,7 +789,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
             {/* Lesson Selection - Dropdown */}
             <div className="space-y-2">
               <label htmlFor="lesson" className="text-sm font-medium">
-                Lesson
+                Tiết học
               </label>
               <select
                 id="lesson"
@@ -758,14 +799,14 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
               >
                 <option value="">
                   {!selectedClassId
-                    ? "Select a class first"
+                    ? "Chọn lớp trước"
                     : !selectedSubjectCode
-                    ? "Select a subject first"
+                    ? "Chọn môn học trước"
                     : isLoadingLessons
-                    ? "Loading lessons..."
+                    ? "Đang tải tiết học..."
                     : lessons.length > 0
-                    ? "Select a lesson"
-                    : "No lessons available"}
+                    ? "Chọn tiết học"
+                    : "Không có tiết học"}
                 </option>
                 {lessons.map((lesson) => (
                   <option key={lesson.id} value={lesson.id}>
@@ -779,9 +820,9 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
             {/* Previous Lecture Section */}
             {selectedClassId && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Previous Lecture</label>
+                <label className="text-sm font-medium">Tiết dạy trước</label>
                 {isLoadingPreviousLecture ? (
-                  <div className="h-23 w-full bg-muted rounded-md animate-pulse" />
+                  <div className="h-23 w-full bg-muted rounded-md" />
                 ) : previousLecture ? (
                   <div className="flex gap-3 p-2.5 border border-border rounded-md bg-muted h-23 items-center">
                     {/* Left: Calendar-style date */}
@@ -804,18 +845,18 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
                     <div className="flex-1 flex flex-col justify-center space-y-1">
                       <div className="text-sm font-semibold text-foreground">
                         {previousLecture.className} -{" "}
-                        {getSessionName(previousLecture.section, previousLecture.dateStudy)} - Period{" "}
+                        {getSessionName(previousLecture.section, previousLecture.dateStudy)} - Tiết{" "}
                         {previousLecture.period}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {formatPeriodNumber(previousLecture.distributeProgramPeriod)} -{" "}
+                        {formatPeriodLabel(previousLecture.distributeProgramPeriod)} -{" "}
                         {previousLecture.distributeProgramName}
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground p-3 border border-border rounded-md bg-muted h-24 flex items-center">
-                    No previous lecture found
+                    Không tìm thấy tiết dạy trước
                   </div>
                 )}
               </div>
@@ -824,23 +865,23 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
             {/* Notes */}
             <div className="space-y-2">
               <label htmlFor="notes" className="text-sm font-medium">
-                Notes
+                Ghi chú
               </label>
               <textarea
                 id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background min-h-[100px]"
-                placeholder="Additional notes (optional)"
+                placeholder="Ghi chú thêm (không bắt buộc)"
                 spellCheck={false}
               />
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
+                Hủy
               </Button>
-              <Button type="submit">Save</Button>
+              <Button type="submit">Lưu</Button>
             </DialogFooter>
           </form>
         </div>

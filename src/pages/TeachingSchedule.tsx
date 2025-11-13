@@ -7,8 +7,13 @@ import { Button } from "@/components/ui/button";
 import { CalendarIcon, Filter } from "lucide-react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const DAY_ABBREVIATIONS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_ABBREVIATIONS = ["Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7", "CN"];
 const SESSIONS = ["Morning", "Afternoon", "Evening"];
+const SESSION_LABELS: Record<string, string> = {
+  Morning: "Buổi sáng",
+  Afternoon: "Buổi chiều",
+  Evening: "Buổi tối",
+};
 const PERIODS_PER_SESSION = 5;
 
 // Get week's dates (Monday to Sunday) from a given date
@@ -34,21 +39,21 @@ function getCurrentWeekDates(): Date[] {
   return getWeekDatesFromDate(new Date());
 }
 
-// Format date as MM/DD
+// Format date as DD/MM
 function formatDate(date: Date): string {
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
   const day = date.getDate().toString().padStart(2, "0");
-  return `${month}/${day}`;
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  return `${day}/${month}`;
 }
 
 // Format week range for display (e.g., "Jan 1 - Jan 7, 2024")
 function formatWeekRange(weekDates: Date[]): string {
   const monday = weekDates[0];
   const sunday = weekDates[6];
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const months = ["Thg 1", "Thg 2", "Thg 3", "Thg 4", "Thg 5", "Thg 6", "Thg 7", "Thg 8", "Thg 9", "Thg 10", "Thg 11", "Thg 12"];
 
-  const mondayStr = `${months[monday.getMonth()]} ${monday.getDate()}`;
-  const sundayStr = `${months[sunday.getMonth()]} ${sunday.getDate()}, ${sunday.getFullYear()}`;
+  const mondayStr = `${monday.getDate()} ${months[monday.getMonth()]}`;
+  const sundayStr = `${sunday.getDate()} ${months[sunday.getMonth()]}, ${sunday.getFullYear()}`;
 
   return `${mondayStr} - ${sundayStr}`;
 }
@@ -251,7 +256,11 @@ export default function TeachingSchedule() {
         setSchedule(scheduleMap);
       } catch (error) {
         console.error("Failed to fetch teaching schedule:", error);
-        setScheduleError(error instanceof Error ? error.message : "Failed to load schedule");
+        setScheduleError(
+          error instanceof Error
+            ? `Không thể tải thời khóa biểu: ${error.message}`
+            : "Không thể tải thời khóa biểu"
+        );
       } finally {
         setIsLoadingSchedule(false);
       }
@@ -271,7 +280,7 @@ export default function TeachingSchedule() {
   return (
     <div className="w-full">
       <div className="p-4 mb-4">
-        <h1 className="text-3xl font-bold text-center mb-4">Teaching Schedule</h1>
+        <h1 className="text-3xl font-bold text-center mb-4">Thời khóa biểu giảng dạy</h1>
 
         {/* Filters and Week Selector */}
         <div className="flex items-center justify-center gap-4 mb-4">
@@ -280,7 +289,7 @@ export default function TeachingSchedule() {
             <PopoverTrigger asChild>
               <Button variant="outline" className="gap-2 w-[160px] justify-center relative">
                 <Filter className="h-4 w-4 shrink-0" />
-                <span className="truncate">Filter by Class</span>
+                <span className="truncate">Lọc theo lớp</span>
                 {selectedClasses.size > 0 && (
                   <span className="bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs shrink-0">
                     {selectedClasses.size}
@@ -291,15 +300,15 @@ export default function TeachingSchedule() {
             <PopoverContent className="w-64 p-2" align="start">
               <div className="space-y-2">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-sm">Filter by Class</h4>
+                  <h4 className="font-semibold text-sm">Lọc theo lớp</h4>
                   {selectedClasses.size > 0 && (
                     <Button variant="ghost" size="sm" onClick={clearClassFilter} className="h-7 text-xs">
-                      Clear
+                      Xóa
                     </Button>
                   )}
                 </div>
                 {isLoadingClasses ? (
-                  <div className="text-sm text-muted-foreground py-2">Loading classes...</div>
+                  <div className="text-sm text-muted-foreground py-2">Đang tải danh sách lớp...</div>
                 ) : (
                   <div className="max-h-64 overflow-y-auto space-y-1">
                     {classes.map((classItem) => {
@@ -351,8 +360,8 @@ export default function TeachingSchedule() {
           </Popover>
 
           {/* Week Selector */}
-          <Button onClick={handlePreviousWeek} variant="outline" aria-label="Previous week">
-            ← Prev
+          <Button onClick={handlePreviousWeek} variant="outline" aria-label="Tuần trước">
+            ← Tuần trước
           </Button>
 
           <div className="flex items-center gap-2">
@@ -376,22 +385,24 @@ export default function TeachingSchedule() {
             </Popover>
           </div>
 
-          <Button onClick={handleNextWeek} variant="outline" aria-label="Next week">
-            Next →
+          <Button onClick={handleNextWeek} variant="outline" aria-label="Tuần sau">
+            Tuần sau →
           </Button>
 
           <Button onClick={handleToday} variant="default">
-            Today
+            Hôm nay
           </Button>
         </div>
 
-        {isLoadingSchedule && <div className="text-center text-sm text-muted-foreground mt-2">Loading schedule...</div>}
-        {scheduleError && <div className="text-center text-sm text-destructive mt-2">Error: {scheduleError}</div>}
+        {isLoadingSchedule && (
+          <div className="text-center text-sm text-muted-foreground mt-2">Đang tải thời khóa biểu...</div>
+        )}
+        {scheduleError && <div className="text-center text-sm text-destructive mt-2">Lỗi: {scheduleError}</div>}
       </div>
 
       <div className="grid grid-cols-8 w-full">
         <div className="bg-muted p-3 font-semibold text-center border-r border-b border-border sticky top-0 z-10">
-          Time
+          Thời gian
         </div>
         {DAYS.map((day, index) => {
           const date = weekDates[index];
@@ -411,8 +422,10 @@ export default function TeachingSchedule() {
           <Fragment key={`row-${rowIndex}`}>
             {/* Row label (first column) */}
             <div className="bg-card p-2 text-sm text-center border-r border-b border-border font-medium sticky left-0 z-5">
-              {row.period === 1 && <div className="font-semibold text-foreground">{row.session}</div>}
-              <div className="text-xs text-muted-foreground">P{row.period}</div>
+              {row.period === 1 && (
+                <div className="font-semibold text-foreground">{SESSION_LABELS[row.session] ?? row.session}</div>
+              )}
+              <div className="text-xs text-muted-foreground">Tiết {row.period}</div>
             </div>
 
             {/* Day cells */}
@@ -433,11 +446,11 @@ export default function TeachingSchedule() {
                     <div className="text-xs space-y-1">
                       {lesson.lesson && (
                         <div className="font-semibold text-foreground line-clamp-2">
-                          {lesson.lessonPeriod !== undefined && `${lesson.lessonPeriod} - `}
+                          {lesson.lessonPeriod !== undefined && `Tiết ${lesson.lessonPeriod} - `}
                           {lesson.lesson}
                         </div>
                       )}
-                      {lesson.class && <div className="text-muted-foreground">Class: {lesson.class}</div>}
+                      {lesson.class && <div className="text-muted-foreground">Lớp: {lesson.class}</div>}
                     </div>
                   )}
                 </div>
