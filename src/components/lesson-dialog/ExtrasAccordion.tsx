@@ -1,4 +1,5 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Plus, Minus } from "lucide-react";
 
 interface ExtrasAccordionProps {
   lectureType: string;
@@ -33,7 +34,14 @@ export function ExtrasAccordion({
       onValueChange={(value: string | undefined) => setExtrasAccordionValue(value)}
     >
       <AccordionItem value="extras" className="border-b-0">
-        <AccordionTrigger className="py-4">Thông tin bổ sung</AccordionTrigger>
+        <AccordionTrigger className="py-4 focus:ring-0 focus:outline-none">
+          <span>Thông tin bổ sung</span>
+          {extrasAccordionValue === "extras" ? (
+            <Minus className="h-4 w-4 shrink-0" />
+          ) : (
+            <Plus className="h-4 w-4 shrink-0" />
+          )}
+        </AccordionTrigger>
         <AccordionContent className="pt-0">
           <div className="space-y-4">
             <div className="space-y-2">

@@ -131,18 +131,20 @@ export function LessonDialog({
 
             <NotesField value={notes} onChange={setNotes} />
 
-            <ExtrasAccordion
-              lectureType={extrasState.lectureType}
-              setLectureType={extrasState.setLectureType}
-              equipmentName={extrasState.equipmentName}
-              setEquipmentName={extrasState.setEquipmentName}
-              equipmentQuantity={extrasState.equipmentQuantity}
-              setEquipmentQuantity={extrasState.setEquipmentQuantity}
-              equipmentType={extrasState.equipmentType}
-              setEquipmentType={extrasState.setEquipmentType}
-              extrasAccordionValue={extrasState.extrasAccordionValue}
-              setExtrasAccordionValue={extrasState.setExtrasAccordionValue}
-            />
+            <div className="-mt-6">
+              <ExtrasAccordion
+                lectureType={extrasState.lectureType}
+                setLectureType={extrasState.setLectureType}
+                equipmentName={extrasState.equipmentName}
+                setEquipmentName={extrasState.setEquipmentName}
+                equipmentQuantity={extrasState.equipmentQuantity}
+                setEquipmentQuantity={extrasState.setEquipmentQuantity}
+                equipmentType={extrasState.equipmentType}
+                setEquipmentType={extrasState.setEquipmentType}
+                extrasAccordionValue={extrasState.extrasAccordionValue}
+                setExtrasAccordionValue={extrasState.setExtrasAccordionValue}
+              />
+            </div>
 
             {saveError && (
               <p className="text-sm text-destructive" role="alert">

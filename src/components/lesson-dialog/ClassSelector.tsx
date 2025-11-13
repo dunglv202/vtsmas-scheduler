@@ -18,7 +18,7 @@ export function ClassSelector({ classes, selectedClassId, isLoading, error, onSe
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid grid-cols-4 gap-2">
       {classes.map((classItem) => (
         <button
           key={classItem.id}
@@ -29,7 +29,7 @@ export function ClassSelector({ classes, selectedClassId, isLoading, error, onSe
             onSelect(classItem.id);
           }}
           className={`
-            flex-1 min-w-[100px] px-4 py-2 border-2 rounded-md cursor-pointer text-center text-sm
+            px-2 py-1.5 border-2 rounded-md cursor-pointer text-center text-xs
             transition-all duration-200
             ${
               selectedClassId === classItem.id
