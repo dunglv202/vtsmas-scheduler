@@ -21,7 +21,6 @@ import {
   type SubjectItem,
   type LessonFeedbackDetail,
 } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 export interface LessonInfo {
   lesson?: string;
@@ -643,12 +642,12 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
     return `${cellInfo.day} - ${cellInfo.session} - Period ${cellInfo.period}`;
   };
 
-  const shouldExpandDialog = Boolean(feedback);
+  const shouldShowFeedback = isLoadingFeedback || Boolean(feedback) || Boolean(feedbackError);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className={cn("sm:max-w-[500px]", shouldExpandDialog && "sm:max-w-[1000px] md:max-w-[1100px]")}
+        className="sm:max-w-[500px] max-h-[95vh] flex flex-col overflow-hidden"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader>
@@ -656,12 +655,36 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
           <DialogDescription>Fill in the lesson information for this time slot.</DialogDescription>
         </DialogHeader>
 
-        <div
-          className={cn(
-            "md:grid md:gap-6",
-            shouldExpandDialog ? "md:grid-cols-[minmax(0,1fr)_minmax(0,280px)]" : "md:grid-cols-[minmax(0,1fr)]"
+        <div className="space-y-6 overflow-y-auto px-1 scrollbar-surface">
+          {shouldShowFeedback && (
+            <section className="rounded-md border border-border bg-card p-4 space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Lecture Feedback</h3>
+                <p className="text-xs text-muted-foreground">Retrieved from the weekly lesson assessment book.</p>
+              </div>
+              {isLoadingFeedback ? (
+                <div className="h-24 w-full bg-muted rounded-md" />
+              ) : feedbackError ? (
+                <p className="text-sm text-destructive">{feedbackError}</p>
+              ) : feedback ? (
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <div className="font-medium text-foreground">Period {feedback.distributeProgramPeriod}</div>
+                    <div className="text-muted-foreground text-xs">{feedback.distributeProgramName}</div>
+                  </div>
+                  {feedback.teachingComment && (
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Teacher&apos;s comment
+                      </div>
+                      <div className="text-sm text-foreground">{feedback.teachingComment}</div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </section>
           )}
-        >
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Class Selection - Radio buttons styled as rectangular buttons */}
             <div className="space-y-2">
@@ -820,35 +843,6 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
               <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
-
-          {shouldExpandDialog && (
-            <aside className="mt-4 space-y-4 md:mt-0">
-              <div className="rounded-md border border-border bg-card p-4">
-                <h3 className="text-sm font-semibold text-foreground">Lecture Feedback</h3>
-                <p className="text-xs text-muted-foreground mb-3">Retrieved from the weekly lesson assessment book.</p>
-                {isLoadingFeedback ? (
-                  <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
-                ) : feedbackError ? (
-                  <p className="text-sm text-destructive">{feedbackError}</p>
-                ) : feedback ? (
-                  <div className="space-y-3 text-sm">
-                    <div>
-                      <div className="font-medium text-foreground">Period {feedback.distributeProgramPeriod}</div>
-                      <div className="text-muted-foreground text-xs">{feedback.distributeProgramName}</div>
-                    </div>
-                    {feedback.teachingComment && (
-                      <div>
-                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                          Teacher&apos;s comment
-                        </div>
-                        <div className="text-sm text-foreground">{feedback.teachingComment}</div>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            </aside>
-          )}
         </div>
       </DialogContent>
     </Dialog>
