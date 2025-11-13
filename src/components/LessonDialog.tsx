@@ -642,12 +642,12 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
     return `${cellInfo.day} - ${cellInfo.session} - Period ${cellInfo.period}`;
   };
 
-  const shouldShowFeedback = isLoadingFeedback || Boolean(feedback) || Boolean(feedbackError);
+  const shouldShowFeedback = Boolean(feedback) || Boolean(feedbackError);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className="sm:max-w-[500px] max-h-[95vh] flex flex-col overflow-hidden"
+        className="sm:max-w-[500px] max-h-[95vh] flex flex-col overflow-hidden outline-0"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader>
