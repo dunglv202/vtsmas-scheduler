@@ -16,6 +16,7 @@ import {
   type SubjectItem,
   type LessonFeedbackDetail,
 } from "@/lib/api";
+import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import type { LessonInfo, ScheduleCell } from "./types";
 import {
   DAY_ORDER,
@@ -24,8 +25,6 @@ import {
   DEFAULT_EMPLOYEE_NAME,
   DEFAULT_PHONE_NUMBER,
   DEFAULT_SCHOOL_LEVEL_CODE,
-  DEFAULT_SCHOOL_YEAR_CODE,
-  DEFAULT_SCHOOL_YEAR_ID,
   SESSION_NAME_TO_NUMBER,
   ZERO_GUID,
   formatDateForSchedulePayload,
@@ -127,6 +126,7 @@ export function useLessonDialog({
   employeeName,
   onSave,
 }: UseLessonDialogParams): LessonDialogHookResult {
+  const { schoolYear } = useSchoolYear();
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedLessonId, setSelectedLessonId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -172,11 +172,17 @@ export function useLessonDialog({
         hasInitializedSubjectRef.current = false;
         previousInitialDataRef.current = initialData;
       }
+      if (!schoolYear) {
+        setClassError("Vui lòng đợi thông tin năm học được tải...");
+        setIsLoadingClasses(false);
+        return;
+      }
+
       setIsLoadingClasses(true);
       setClassError(null);
       fetchClasses({
         schoolLevelCode: DEFAULT_SCHOOL_LEVEL_CODE,
-        schoolYearId: DEFAULT_SCHOOL_YEAR_ID,
+        schoolYearId: schoolYear.schoolYearId,
       })
         .then((response) => {
           setClasses(response.items);
@@ -346,11 +352,17 @@ export function useLessonDialog({
     setLessons([]);
     setSelectedLessonId("");
 
+    if (!schoolYear) {
+      setLessonError("Vui lòng đợi thông tin năm học được tải...");
+      setIsLoadingLessons(false);
+      return;
+    }
+
     fetchCurriculum({
       subjectCode: selectedSubjectCode,
       gradeCode: selectedClass.gradeLevelCode,
       classId: selectedClassId,
-      schoolYearId: DEFAULT_SCHOOL_YEAR_ID,
+      schoolYearId: schoolYear.schoolYearId,
     })
       .then((response) => {
         setLessons(response.items);
@@ -408,10 +420,10 @@ export function useLessonDialog({
         );
         setIsLoadingLessons(false);
       });
-  }, [isOpen, selectedClassId, selectedSubjectCode, classes, initialData]);
+  }, [isOpen, selectedClassId, selectedSubjectCode, classes, initialData, schoolYear]);
 
   useEffect(() => {
-    if (!isOpen || !selectedClassId || !selectedSubjectCode) {
+    if (!isOpen || !selectedClassId || !selectedSubjectCode || !schoolYear) {
       setPreviousLecture(null);
       setIsLoadingPreviousLecture(false);
       return;
@@ -491,14 +503,14 @@ export function useLessonDialog({
         previousWeekFrom,
         previousWeekTo,
         DEFAULT_EMPLOYEE_ID,
-        DEFAULT_SCHOOL_YEAR_ID,
+        schoolYear.schoolYearId,
         DEFAULT_SCHOOL_LEVEL_CODE
       ),
       fetchTeachingSchedule(
         currentWeekFrom,
         currentWeekTo,
         DEFAULT_EMPLOYEE_ID,
-        DEFAULT_SCHOOL_YEAR_ID,
+        schoolYear.schoolYearId,
         DEFAULT_SCHOOL_LEVEL_CODE
       ),
     ])
@@ -588,10 +600,10 @@ export function useLessonDialog({
         setPreviousLecture(null);
         setIsLoadingPreviousLecture(false);
       });
-  }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, weekDates]);
+  }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, weekDates, schoolYear]);
 
   useEffect(() => {
-    if (!isOpen || !selectedClassId || !selectedSubjectCode || !cellInfo) {
+    if (!isOpen || !selectedClassId || !selectedSubjectCode || !cellInfo || !schoolYear) {
       setFeedback(null);
       setFeedbackError(null);
       setIsLoadingFeedback(false);
@@ -669,7 +681,7 @@ export function useLessonDialog({
     const cellSession = SESSION_NAME_TO_NUMBER[cellInfo.session];
 
     fetchLessonFeedback({
-      schoolYearId: DEFAULT_SCHOOL_YEAR_ID,
+      schoolYearId: schoolYear.schoolYearId,
       schoolLevelCode: selectedClass.schoolLevelCode || DEFAULT_SCHOOL_LEVEL_CODE,
       classId: selectedClassId,
       dateFrom,
@@ -797,6 +809,11 @@ export function useLessonDialog({
       return;
     }
 
+    if (!schoolYear) {
+      setSaveError("Vui lòng đợi thông tin năm học được tải...");
+      return;
+    }
+
     const selectedClassItem = classes.find((cls) => cls.id === selectedClassId);
     if (!selectedClassItem) {
       setSaveError("Vui lòng chọn lớp học.");
@@ -909,9 +926,9 @@ export function useLessonDialog({
           employeeId: DEFAULT_EMPLOYEE_ID,
           employeeCode: DEFAULT_EMPLOYEE_CODE,
           phoneNumber: DEFAULT_PHONE_NUMBER,
-          schoolYearId: DEFAULT_SCHOOL_YEAR_ID,
+          schoolYearId: schoolYear.schoolYearId,
           schoolLevelCode: DEFAULT_SCHOOL_LEVEL_CODE,
-          schoolYearCode: DEFAULT_SCHOOL_YEAR_CODE,
+          schoolYearCode: schoolYear.code,
           dateFrom: dateFromISO,
           dateTo: dateToISO,
           teachingScheduleDetails: [
@@ -945,9 +962,9 @@ export function useLessonDialog({
             employeeId: DEFAULT_EMPLOYEE_ID,
             employeeCode: DEFAULT_EMPLOYEE_CODE,
             phoneNumber: DEFAULT_PHONE_NUMBER,
-            schoolYearId: DEFAULT_SCHOOL_YEAR_ID,
+            schoolYearId: schoolYear.schoolYearId,
             schoolLevelCode: DEFAULT_SCHOOL_LEVEL_CODE,
-            schoolYearCode: DEFAULT_SCHOOL_YEAR_CODE,
+            schoolYearCode: schoolYear.code,
             dateFrom: dateFromISO,
             dateTo: dateToISO,
             teachingScheduleDetails: [

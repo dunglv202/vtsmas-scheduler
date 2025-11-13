@@ -29,8 +29,6 @@ export const DEFAULT_EMPLOYEE_ID = "3a1c68da-2f33-aae3-a9d2-4cd8b7aba805";
 export const DEFAULT_EMPLOYEE_NAME = "Trần Hoài Thương";
 export const DEFAULT_EMPLOYEE_CODE = "20186511-01-70";
 export const DEFAULT_PHONE_NUMBER = "";
-export const DEFAULT_SCHOOL_YEAR_ID = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
-export const DEFAULT_SCHOOL_YEAR_CODE = "2025-2026";
 export const DEFAULT_SCHOOL_LEVEL_CODE = "03";
 
 export const translateDay = (day: string): string => {

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { login, TOKEN_STORAGE_KEY } from "@/lib/auth";
+import { useSchoolYear } from "@/contexts/SchoolYearContext";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -9,6 +10,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { refresh: refreshSchoolYear } = useSchoolYear();
   const authenticated = !!localStorage.getItem(TOKEN_STORAGE_KEY);
 
   if (authenticated) {
@@ -22,6 +24,8 @@ export default function Login() {
 
     try {
       await login(username, password);
+      // Fetch school year after successful login
+      await refreshSchoolYear();
       // Redirect to teaching schedule after successful login
       navigate("/teaching-schedule");
     } catch (err) {

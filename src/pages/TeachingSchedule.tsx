@@ -4,6 +4,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
+import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { fetchClasses, fetchTeachingSchedule, type ClassItem, type TeachingScheduleDetail } from "@/lib/api";
 import { CalendarIcon, Filter, RefreshCw } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
@@ -120,6 +121,7 @@ function getSessionNameFromSection(section: number): string {
 }
 
 export default function TeachingSchedule() {
+  const { schoolYear } = useSchoolYear();
   const [selectedCell, setSelectedCell] = useState<ScheduleCell | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [schedule, setSchedule] = useState<Record<string, LessonInfo>>({});
@@ -146,13 +148,14 @@ export default function TeachingSchedule() {
 
   // Fetch classes for filter
   useEffect(() => {
+    if (!schoolYear) return;
+
     const loadClasses = async () => {
       setIsLoadingClasses(true);
       try {
-        // TODO: Replace with actual filter values from props or context
         const response = await fetchClasses({
-          schoolLevelCode: "03",
-          schoolYearId: "6570c704-45a0-11ef-82f8-fa163e7dd11b",
+          schoolLevelCode: "03", // TODO: Get from user context or API
+          schoolYearId: schoolYear.schoolYearId,
         });
         setClasses(response.items);
       } catch (error) {
@@ -162,7 +165,7 @@ export default function TeachingSchedule() {
       }
     };
     loadClasses();
-  }, []);
+  }, [schoolYear]);
 
   const handleCellClick = (day: string, session: string, period: number) => {
     setSelectedCell({ day, session, period });
@@ -247,6 +250,8 @@ export default function TeachingSchedule() {
 
   // Fetch teaching schedule from API
   useEffect(() => {
+    if (!schoolYear) return;
+
     const loadSchedule = async () => {
       setIsLoadingSchedule(true);
       setScheduleError(null);
@@ -260,11 +265,10 @@ export default function TeachingSchedule() {
         const fromDate = formatDateForAPI(monday);
         const toDate = formatDateForAPI(sunday);
 
-        // TODO: Get these from user context or props
-        // For now, using example values from the API documentation
+        // TODO: Get employeeId from user context or token
         const employeeId = "3a1c68da-2f33-aae3-a9d2-4cd8b7aba805";
-        const schoolYearId = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
-        const schoolLevelCode = "03";
+        const schoolYearId = schoolYear.schoolYearId;
+        const schoolLevelCode = "03"; // TODO: Get from user context or API
 
         const response = await fetchTeachingSchedule(fromDate, toDate, employeeId, schoolYearId, schoolLevelCode);
 
@@ -343,7 +347,7 @@ export default function TeachingSchedule() {
     };
 
     loadSchedule();
-  }, [weekDates, refreshCounter]);
+  }, [weekDates, refreshCounter, schoolYear]);
 
   // Generate rows: 3 sessions × 5 periods = 15 rows
   const rows: Array<{ session: string; period: number }> = [];

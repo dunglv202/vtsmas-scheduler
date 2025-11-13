@@ -38,6 +38,56 @@ class ApiCache {
 
 const apiCache = new ApiCache();
 
+export interface SchoolYear {
+  code: string;
+  schoolYearId: string;
+  tenantId: string;
+  currentYear: boolean;
+  startDate: string;
+  endDate: string;
+  firstSemesterStartDate: string;
+  firstSemesterEndDate: string;
+  secondSemesterStartDate: string;
+  secondSemesterEndDate: string;
+  principalName: string | null;
+  principalId: string | null;
+  isActive: boolean;
+  description: string | null;
+  sort: number;
+  id: string;
+}
+
+export async function fetchSchoolYears(): Promise<SchoolYear[]> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const response = await fetch("https://gateway.vtsmas.vn/api/danh-muc-truong/nam-hoc-nha-truong/tat-ca", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${tokens.access_token}`,
+      "Accept-Language": "vi",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch school years: ${response.status} ${response.statusText}. ${errorText}`);
+  }
+
+  if (response.status === 204) {
+    return [];
+  }
+
+  const responseText = await response.text();
+  if (!responseText.trim()) {
+    return [];
+  }
+
+  return JSON.parse(responseText) as SchoolYear[];
+}
+
 export interface SubjectItem {
   cateCodeType: string;
   cateCode: string;
