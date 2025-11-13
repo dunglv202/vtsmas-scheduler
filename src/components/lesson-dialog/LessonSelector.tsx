@@ -36,7 +36,7 @@ export function LessonSelector({
   }));
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 px-1">
       <label htmlFor="lesson" className="text-sm font-medium">
         Tiết học
       </label>
@@ -51,4 +51,3 @@ export function LessonSelector({
     </div>
   );
 }
-

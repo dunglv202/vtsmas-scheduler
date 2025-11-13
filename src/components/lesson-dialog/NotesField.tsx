@@ -5,7 +5,7 @@ interface NotesFieldProps {
 
 export function NotesField({ value, onChange }: NotesFieldProps) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 px-1">
       <label htmlFor="notes" className="text-sm font-medium">
         Ghi chú
       </label>
@@ -21,4 +21,3 @@ export function NotesField({ value, onChange }: NotesFieldProps) {
     </div>
   );
 }
-

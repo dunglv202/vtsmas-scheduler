@@ -43,14 +43,11 @@ export function ExtrasAccordion({
             <Plus className="h-4 w-4 shrink-0" />
           )}
         </AccordionTrigger>
-        <AccordionContent className="pt-0">
+        <AccordionContent className="pt-0 px-1">
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Loại tiết dạy</label>
-              <Select
-                value={lectureType || undefined}
-                onValueChange={(value) => setLectureType(value || "")}
-              >
+              <Select value={lectureType || undefined} onValueChange={(value) => setLectureType(value || "")}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Chọn loại tiết dạy" />
                 </SelectTrigger>
@@ -87,10 +84,7 @@ export function ExtrasAccordion({
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Loại thiết bị</label>
-                  <Select
-                    value={equipmentType || undefined}
-                    onValueChange={(value) => setEquipmentType(value || "")}
-                  >
+                  <Select value={equipmentType || undefined} onValueChange={(value) => setEquipmentType(value || "")}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Chọn loại thiết bị" />
                     </SelectTrigger>
@@ -109,4 +103,3 @@ export function ExtrasAccordion({
     </Accordion>
   );
 }
-
