@@ -36,6 +36,7 @@ import {
   mapLectureTypeToStatus,
   shouldShowFeedbackSection,
 } from "./utils";
+import { saveLectureTemplate, loadLectureTemplate, clearLectureTemplate } from "./templateStorage";
 
 interface UseLessonDialogParams {
   isOpen: boolean;
@@ -113,6 +114,8 @@ export interface LessonDialogHookResult {
   unscheduleError: string | null;
   handleUnschedule: () => Promise<void>;
   canUnschedule: boolean;
+  isBookmarked: boolean;
+  handleToggleBookmark: () => void;
 }
 
 export function useLessonDialog({
@@ -159,9 +162,11 @@ export function useLessonDialog({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isUnscheduling, setIsUnscheduling] = useState(false);
   const [unscheduleError, setUnscheduleError] = useState<string | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const hasInitializedRef = useRef(false);
   const hasInitializedSubjectRef = useRef(false);
   const previousInitialDataRef = useRef<LessonInfo | undefined>(undefined);
+  const hasLoadedTemplateRef = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -218,6 +223,7 @@ export function useLessonDialog({
       setIsSaving(false);
       setUnscheduleError(null);
       setIsUnscheduling(false);
+      setIsBookmarked(false);
     }
   }, [isOpen, initialData]);
 
@@ -251,6 +257,45 @@ export function useLessonDialog({
     }
   }, [isOpen, initialData, classes]);
 
+  // Load template when dialog opens for unscheduled slot (no initialData)
+  useEffect(() => {
+    if (isOpen && !initialData && !hasLoadedTemplateRef.current) {
+      hasLoadedTemplateRef.current = true;
+      const template = loadLectureTemplate();
+      if (template && template.subjectCode) {
+        // Subject code is handled in the subject loading effect
+        // Only set other template values here
+        setLectureType(template.lectureType);
+        setEquipmentName(template.equipment.name || "");
+        setEquipmentQuantity(template.equipment.quantity || "");
+        setEquipmentType(template.equipment.type || "");
+        if (template.lectureType || template.equipment.name || template.equipment.quantity || template.equipment.type) {
+          setExtrasAccordionValue("extras");
+        }
+      }
+    } else if (!isOpen) {
+      hasLoadedTemplateRef.current = false;
+    }
+  }, [isOpen, initialData]);
+
+  // Update bookmark state when template values change or when initialData is loaded
+  useEffect(() => {
+    if (isOpen) {
+      const template = loadLectureTemplate();
+      if (template && template.subjectCode) {
+        const matches =
+          template.subjectCode === selectedSubjectCode &&
+          template.lectureType === lectureType &&
+          template.equipment.name === equipmentName &&
+          template.equipment.quantity === equipmentQuantity &&
+          template.equipment.type === equipmentType;
+        setIsBookmarked(matches);
+      } else {
+        setIsBookmarked(false);
+      }
+    }
+  }, [isOpen, selectedSubjectCode, lectureType, equipmentName, equipmentQuantity, equipmentType]);
+
   useEffect(() => {
     if (isOpen) {
       setIsLoadingSubjects(true);
@@ -266,6 +311,13 @@ export function useLessonDialog({
               );
               if (matchedSubject) {
                 initialSubjectCode = matchedSubject.cateCode;
+              }
+            }
+            // If no initialData, try to load from template
+            if (!initialSubjectCode && !initialData) {
+              const template = loadLectureTemplate();
+              if (template && template.subjectCode) {
+                initialSubjectCode = template.subjectCode;
               }
             }
             setSelectedSubjectCode(initialSubjectCode);
@@ -937,6 +989,28 @@ export function useLessonDialog({
 
   const canUnschedule = Boolean(initialData?.scheduleDetailId && teachingScheduleId);
 
+  const handleToggleBookmark = () => {
+    if (isBookmarked) {
+      // Clear template
+      clearLectureTemplate();
+      setIsBookmarked(false);
+    } else {
+      // Save current values as template
+      if (selectedSubjectCode) {
+        saveLectureTemplate({
+          subjectCode: selectedSubjectCode,
+          lectureType: lectureType,
+          equipment: {
+            name: equipmentName,
+            quantity: equipmentQuantity,
+            type: equipmentType,
+          },
+        });
+        setIsBookmarked(true);
+      }
+    }
+  };
+
   return {
     dialogTitle,
     classState,
@@ -955,5 +1029,7 @@ export function useLessonDialog({
     unscheduleError,
     handleUnschedule,
     canUnschedule,
+    isBookmarked,
+    handleToggleBookmark,
   };
 }

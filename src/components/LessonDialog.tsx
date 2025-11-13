@@ -17,6 +17,7 @@ import { ExtrasAccordion } from "./lesson-dialog/ExtrasAccordion";
 import { FeedbackSection } from "./lesson-dialog/FeedbackSection";
 import { useLessonDialog } from "./lesson-dialog/useLessonDialog";
 import type { LessonInfo, ScheduleCell } from "./lesson-dialog/types";
+import { BookmarkIcon } from "lucide-react";
 export type { LessonInfo, LessonEquipment, ScheduleCell } from "./lesson-dialog/types";
 
 interface LessonDialogProps {
@@ -58,6 +59,8 @@ export function LessonDialog({
     unscheduleError,
     handleUnschedule,
     canUnschedule,
+    isBookmarked,
+    handleToggleBookmark,
   } = useLessonDialog({
     isOpen,
     initialData,
@@ -161,19 +164,25 @@ export function LessonDialog({
               )}
 
               <DialogFooter className="p-0">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  onClick={handleToggleBookmark}
+                  title={isBookmarked ? "Xóa mẫu đã lưu" : "Lưu mẫu"}
+                >
+                  <BookmarkIcon className="h-4 w-4" fill={isBookmarked ? "currentColor" : "none"} />
+                </Button>
                 {canUnschedule && (
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="outline"
                     onClick={handleUnschedule}
                     disabled={isUnscheduling || isSaving}
                   >
                     {isUnscheduling ? "Đang xóa..." : "Hủy lịch"}
                   </Button>
                 )}
-                <Button type="button" variant="outline" onClick={onClose} disabled={isSaving || isUnscheduling}>
-                  Hủy
-                </Button>
                 <Button type="submit" disabled={isSaving || isUnscheduling}>
                   {isSaving ? "Đang lưu..." : "Lưu"}
                 </Button>
