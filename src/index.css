@@ -126,11 +126,15 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html {
+  html,
+  body {
     @apply min-h-screen;
-    scrollbar-gutter: stable;
+    overflow: hidden;
   }
   body {
-    @apply min-h-screen bg-background text-foreground;
+    @apply bg-background text-foreground;
+  }
+  #root {
+    @apply h-screen overflow-hidden;
   }
 }

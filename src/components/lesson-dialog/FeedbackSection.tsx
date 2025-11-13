@@ -18,9 +18,7 @@ export function FeedbackSection({ shouldShow, isLoading, feedback, error }: Feed
         <h3 className="text-sm font-semibold text-foreground">Nhận xét tiết dạy</h3>
         <p className="text-xs text-muted-foreground">Dữ liệu lấy từ sổ đầu bài tuần.</p>
       </div>
-      {isLoading ? (
-        <div className="h-24 w-full bg-muted rounded-md" />
-      ) : error ? (
+      {error ? (
         <p className="text-sm text-destructive">{error}</p>
       ) : feedback ? (
         <div className="space-y-3 text-sm">

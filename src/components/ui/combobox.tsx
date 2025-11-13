@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ComboboxOption {
   value: string;
@@ -55,23 +56,27 @@ export function Combobox({
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command>
           <CommandInput placeholder="Tìm kiếm..." />
-          <CommandList>
-            <CommandEmpty>Không tìm thấy</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => {
-                    onValueChange?.(option.value === value ? "" : option.value);
-                    setOpen(false);
-                  }}
-                >
-                  <Check className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")} />
-                  {option.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
+          <CommandList className="max-h-none overflow-visible">
+            <ScrollArea className="h-[300px]">
+              <div className="pr-4">
+                <CommandEmpty>Không tìm thấy</CommandEmpty>
+                <CommandGroup>
+                  {options.map((option) => (
+                    <CommandItem
+                      key={option.value}
+                      value={option.label}
+                      onSelect={() => {
+                        onValueChange?.(option.value === value ? "" : option.value);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")} />
+                      {option.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </div>
+            </ScrollArea>
           </CommandList>
         </Command>
       </PopoverContent>
