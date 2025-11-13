@@ -5,6 +5,7 @@ import {
   fetchTeachingSchedule,
   fetchSubjects,
   fetchLessonFeedback,
+  createTeachingSchedule,
   createTeachingScheduleDetail,
   deleteTeachingScheduleDetails,
   type CreateTeachingScheduleDetailRequest,
@@ -18,10 +19,17 @@ import {
 import type { LessonInfo, ScheduleCell } from "./types";
 import {
   DAY_ORDER,
+  DEFAULT_EMPLOYEE_CODE,
   DEFAULT_EMPLOYEE_ID,
+  DEFAULT_EMPLOYEE_NAME,
+  DEFAULT_PHONE_NUMBER,
+  DEFAULT_SCHOOL_LEVEL_CODE,
+  DEFAULT_SCHOOL_YEAR_CODE,
+  DEFAULT_SCHOOL_YEAR_ID,
   SESSION_NAME_TO_NUMBER,
   ZERO_GUID,
   formatDateForSchedulePayload,
+  formatDateISO,
   getDialogTitle,
   mapEquipmentTypeToToolType,
   mapLectureTypeToDivisiveName,
@@ -169,8 +177,8 @@ export function useLessonDialog({
       setIsLoadingClasses(true);
       setClassError(null);
       fetchClasses({
-        schoolLevelCode: "03",
-        schoolYearId: "6570c704-45a0-11ef-82f8-fa163e7dd11b",
+        schoolLevelCode: DEFAULT_SCHOOL_LEVEL_CODE,
+        schoolYearId: DEFAULT_SCHOOL_YEAR_ID,
       })
         .then((response) => {
           setClasses(response.items);
@@ -247,7 +255,7 @@ export function useLessonDialog({
     if (isOpen) {
       setIsLoadingSubjects(true);
       setSubjectError(null);
-      fetchSubjects("03")
+      fetchSubjects(DEFAULT_SCHOOL_LEVEL_CODE)
         .then((items) => {
           setSubjects(items);
           if (!hasInitializedSubjectRef.current) {
@@ -297,12 +305,11 @@ export function useLessonDialog({
     setLessons([]);
     setSelectedLessonId("");
 
-    const schoolYearId = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
     fetchCurriculum({
       subjectCode: selectedSubjectCode,
       gradeCode: selectedClass.gradeLevelCode,
       classId: selectedClassId,
-      schoolYearId,
+      schoolYearId: DEFAULT_SCHOOL_YEAR_ID,
     })
       .then((response) => {
         setLessons(response.items);
@@ -438,10 +445,21 @@ export function useLessonDialog({
       cellSession = SESSION_NAME_TO_NUMBER[cellInfo.session] ?? null;
     }
 
-    const schoolYearId = "6570c704-45a0-11ef-82f8-fa163e7dd11b";
     Promise.all([
-      fetchTeachingSchedule(previousWeekFrom, previousWeekTo, DEFAULT_EMPLOYEE_ID, schoolYearId, "03"),
-      fetchTeachingSchedule(currentWeekFrom, currentWeekTo, DEFAULT_EMPLOYEE_ID, schoolYearId, "03"),
+      fetchTeachingSchedule(
+        previousWeekFrom,
+        previousWeekTo,
+        DEFAULT_EMPLOYEE_ID,
+        DEFAULT_SCHOOL_YEAR_ID,
+        DEFAULT_SCHOOL_LEVEL_CODE
+      ),
+      fetchTeachingSchedule(
+        currentWeekFrom,
+        currentWeekTo,
+        DEFAULT_EMPLOYEE_ID,
+        DEFAULT_SCHOOL_YEAR_ID,
+        DEFAULT_SCHOOL_LEVEL_CODE
+      ),
     ])
       .then(
         ([previousWeekResponse, currentWeekResponse]: [
@@ -606,8 +624,8 @@ export function useLessonDialog({
     const cellSession = SESSION_NAME_TO_NUMBER[cellInfo.session];
 
     fetchLessonFeedback({
-      schoolYearId: "6570c704-45a0-11ef-82f8-fa163e7dd11b",
-      schoolLevelCode: selectedClass.schoolLevelCode || "03",
+      schoolYearId: DEFAULT_SCHOOL_YEAR_ID,
+      schoolLevelCode: selectedClass.schoolLevelCode || DEFAULT_SCHOOL_LEVEL_CODE,
       classId: selectedClassId,
       dateFrom,
       dateTo,
@@ -782,7 +800,20 @@ export function useLessonDialog({
       return;
     }
 
-    const payload: CreateTeachingScheduleDetailRequest = {
+    if (!teachingScheduleId && (!weekDates || weekDates.length < 7)) {
+      setSaveError("Không xác định được tuần học cho lịch này.");
+      return;
+    }
+
+    const equipmentInfo = isRegisterLearningTool
+      ? {
+          name: trimmedEquipmentName || undefined,
+          quantity: trimmedEquipmentQuantity || undefined,
+          type: equipmentType || undefined,
+        }
+      : undefined;
+
+    const detailForSchedule = {
       dayOfWeek,
       section,
       period: cellInfo.period,
@@ -803,26 +834,45 @@ export function useLessonDialog({
       totalTool: isRegisterLearningTool ? trimmedEquipmentQuantity || null : null,
       toolType: isRegisterLearningTool ? toolTypeValue : null,
       status: mapLectureTypeToStatus(lectureType),
-      employeeSubstituteId: ZERO_GUID,
-      teachingScheduleId: teachingScheduleId || ZERO_GUID,
       dateStudy,
-      employeeId: DEFAULT_EMPLOYEE_ID,
-      employeeName: employeeName || "",
-      employeeSubstituteName: "",
     };
 
     setIsSaving(true);
 
     try {
-      await createTeachingScheduleDetail(payload);
+      if (!teachingScheduleId) {
+        const dateFromISO = formatDateISO(weekDates![0]);
+        const dateToISO = formatDateISO(weekDates![6]);
 
-      const equipmentInfo = isRegisterLearningTool
-        ? {
-            name: trimmedEquipmentName || undefined,
-            quantity: trimmedEquipmentQuantity || undefined,
-            type: equipmentType || undefined,
-          }
-        : undefined;
+        await createTeachingSchedule({
+          employeeName: employeeName || DEFAULT_EMPLOYEE_NAME,
+          employeeId: DEFAULT_EMPLOYEE_ID,
+          employeeCode: DEFAULT_EMPLOYEE_CODE,
+          phoneNumber: DEFAULT_PHONE_NUMBER,
+          schoolYearId: DEFAULT_SCHOOL_YEAR_ID,
+          schoolLevelCode: DEFAULT_SCHOOL_LEVEL_CODE,
+          schoolYearCode: DEFAULT_SCHOOL_YEAR_CODE,
+          dateFrom: dateFromISO,
+          dateTo: dateToISO,
+          teachingScheduleDetails: [
+            {
+              ...detailForSchedule,
+              employeeSubstituteId: null,
+            },
+          ],
+        });
+      } else {
+        const payload: CreateTeachingScheduleDetailRequest = {
+          ...detailForSchedule,
+          employeeSubstituteId: ZERO_GUID,
+          teachingScheduleId,
+          employeeId: DEFAULT_EMPLOYEE_ID,
+          employeeName: employeeName || DEFAULT_EMPLOYEE_NAME,
+          employeeSubstituteName: "",
+        };
+
+        await createTeachingScheduleDetail(payload);
+      }
 
       onSave({
         lesson: lessonDisplayName,
@@ -837,9 +887,10 @@ export function useLessonDialog({
         gradeName: selectedClassItem.gradeLevel,
         lectureType: lectureType || undefined,
         equipment: equipmentInfo,
+        scheduleDetailId: teachingScheduleId ? initialData?.scheduleDetailId : undefined,
       });
     } catch (error) {
-      console.error("Failed to create teaching schedule detail:", error);
+      console.error("Failed to save teaching schedule detail:", error);
       setSaveError(error instanceof Error ? error.message : "Không thể lưu tiết dạy. Vui lòng kiểm tra lại thông tin.");
     } finally {
       setIsSaving(false);

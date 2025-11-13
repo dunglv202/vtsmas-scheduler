@@ -8,7 +8,7 @@ class ApiCache {
   private cache = new Map<string, CacheEntry<unknown>>();
   private defaultTTL = 5 * 60 * 1000; // 5 minutes
 
-  private getKey(prefix: string, ...args: (string | undefined)[]): string {
+  public getKey(prefix: string, ...args: (string | undefined)[]): string {
     return `${prefix}:${args.filter(Boolean).join(":")}`;
   }
 
@@ -366,8 +366,8 @@ export interface TeachingScheduleResponse {
 }
 
 export async function fetchTeachingSchedule(
-  dateFrom: string,
-  dateTo: string,
+  dateFrom: string | Date,
+  dateTo: string | Date,
   employeeId: string,
   schoolYearId: string,
   schoolLevelCode: string = "03"
@@ -449,6 +449,42 @@ export interface CreateTeachingScheduleDetailRequest {
   employeeSubstituteName: string;
 }
 
+export interface CreateTeachingScheduleRequest {
+  employeeName: string;
+  employeeId: string;
+  employeeCode: string;
+  phoneNumber: string;
+  schoolYearId: string;
+  schoolLevelCode: string;
+  schoolYearCode: string;
+  dateFrom: string;
+  dateTo: string;
+  teachingScheduleDetails: Array<{
+    dayOfWeek: number;
+    section: number;
+    period: number;
+    classId: string;
+    className: string;
+    gradeCode: string;
+    gradeName: string;
+    subjectCode: string;
+    subjectName: string;
+    description: string | null;
+    divisiveConfigurationId: string | null;
+    divisiveConfigurationName: string | null;
+    distributeProgramId: string;
+    distributeProgramPeriod: string;
+    isRegisterLearningTool: boolean;
+    toolName: string | null;
+    totalTool: string | null;
+    toolType: number | null;
+    distributeProgramName: string;
+    status: number;
+    employeeSubstituteId: string | null;
+    dateStudy: string;
+  }>;
+}
+
 export async function createTeachingScheduleDetail(payload: CreateTeachingScheduleDetailRequest): Promise<void> {
   const tokens = getStoredTokens();
   if (!tokens?.access_token) {
@@ -471,6 +507,41 @@ export async function createTeachingScheduleDetail(payload: CreateTeachingSchedu
       `Failed to create teaching schedule detail: ${response.status} ${response.statusText}. ${errorText}`
     );
   }
+}
+
+export async function createTeachingSchedule(
+  payload: CreateTeachingScheduleRequest
+): Promise<TeachingScheduleResponse | null> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const response = await fetch("https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/tao", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tokens.access_token}`,
+      "Content-Type": "application/json",
+      "Accept-Language": "vi",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok && response.status !== 204) {
+    const errorText = await response.text();
+    throw new Error(`Failed to create teaching schedule: ${response.status} ${response.statusText}. ${errorText}`);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+  if (!text.trim()) {
+    return null;
+  }
+
+  return JSON.parse(text) as TeachingScheduleResponse;
 }
 
 export async function deleteTeachingScheduleDetails(
