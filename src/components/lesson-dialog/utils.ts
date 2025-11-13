@@ -146,10 +146,7 @@ export const getDialogTitle = (cellInfo: ScheduleCell | null): string => {
   return `${dayLabel} - ${sessionLabel} - Tiết ${cellInfo.period}`;
 };
 
-export const shouldShowFeedbackSection = (feedback: unknown, feedbackError: string | null, isLoading: boolean) => {
-  if (isLoading) {
-    return true;
-  }
+export const shouldShowFeedbackSection = (feedback: unknown, feedbackError: string | null) => {
   if (feedbackError) {
     return true;
   }

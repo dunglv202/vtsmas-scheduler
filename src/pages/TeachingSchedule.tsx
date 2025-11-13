@@ -454,9 +454,6 @@ export default function TeachingSchedule() {
           </Button>
         </div>
 
-        {isLoadingSchedule && (
-          <div className="text-center text-sm text-muted-foreground mt-2">Đang tải thời khóa biểu...</div>
-        )}
         {scheduleError && <div className="text-center text-sm text-destructive mt-2">Lỗi: {scheduleError}</div>}
       </div>
 

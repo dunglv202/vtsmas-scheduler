@@ -723,7 +723,7 @@ export function useLessonDialog({
     ]
   );
 
-  const shouldShowFeedback = shouldShowFeedbackSection(feedback, feedbackError, isLoadingFeedback);
+  const shouldShowFeedback = shouldShowFeedbackSection(feedback, feedbackError);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
