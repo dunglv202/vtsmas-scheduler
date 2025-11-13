@@ -840,6 +840,11 @@ export function useLessonDialog({
     setIsSaving(true);
 
     try {
+      // If updating an existing schedule detail, delete the old one first
+      if (initialData?.scheduleDetailId && teachingScheduleId) {
+        await deleteTeachingScheduleDetails(teachingScheduleId, [initialData.scheduleDetailId]);
+      }
+
       if (!teachingScheduleId) {
         const dateFromISO = formatDateISO(weekDates![0]);
         const dateToISO = formatDateISO(weekDates![6]);
@@ -874,6 +879,10 @@ export function useLessonDialog({
         await createTeachingScheduleDetail(payload);
       }
 
+      // When updating (deleting old and creating new), we don't have the new scheduleDetailId yet
+      // It will be fetched when the parent component refreshes the schedule
+      const wasUpdating = Boolean(initialData?.scheduleDetailId && teachingScheduleId);
+
       onSave({
         lesson: lessonDisplayName,
         lessonId: selectedLessonItem.id,
@@ -887,7 +896,7 @@ export function useLessonDialog({
         gradeName: selectedClassItem.gradeLevel,
         lectureType: lectureType || undefined,
         equipment: equipmentInfo,
-        scheduleDetailId: teachingScheduleId ? initialData?.scheduleDetailId : undefined,
+        scheduleDetailId: wasUpdating ? undefined : teachingScheduleId ? initialData?.scheduleDetailId : undefined,
       });
     } catch (error) {
       console.error("Failed to save teaching schedule detail:", error);
