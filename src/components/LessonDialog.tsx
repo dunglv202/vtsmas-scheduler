@@ -119,12 +119,14 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
   };
 
   // Helper function to format date
-  const formatDate = (dateString: string): { day: string; month: string } => {
+  const formatDate = (dateString: string): { day: string; month: string; weekday: string } => {
     const date = new Date(dateString);
     const day = date.getDate().toString().padStart(2, "0");
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const month = months[date.getMonth()];
-    return { day, month };
+    const weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    const weekday = weekdays[date.getDay()];
+    return { day, month, weekday };
   };
 
   // Fetch classes when dialog opens
@@ -360,7 +362,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
     let cellDate: Date | null = null;
     let cellSession: number | null = null;
     if (cellInfo) {
-      const cellDayIndex = DAY_ORDER.indexOf(cellInfo.day as typeof DAY_ORDER[number]);
+      const cellDayIndex = DAY_ORDER.indexOf(cellInfo.day as (typeof DAY_ORDER)[number]);
       if (cellDayIndex >= 0) {
         if (weekDates && weekDates[cellDayIndex]) {
           const source = weekDates[cellDayIndex];
@@ -557,11 +559,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
 
     const cellDate =
       weekDates && weekDates[dayOffset]
-        ? new Date(
-            weekDates[dayOffset].getFullYear(),
-            weekDates[dayOffset].getMonth(),
-            weekDates[dayOffset].getDate()
-          )
+        ? new Date(weekDates[dayOffset].getFullYear(), weekDates[dayOffset].getMonth(), weekDates[dayOffset].getDate())
         : (() => {
             const fallback = new Date(baseWeek.monday);
             fallback.setDate(baseWeek.monday.getDate() + dayOffset);
@@ -650,10 +648,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className={cn(
-          "sm:max-w-[500px]",
-          shouldExpandDialog && "sm:max-w-[1000px] md:max-w-[1100px]"
-        )}
+        className={cn("sm:max-w-[500px]", shouldExpandDialog && "sm:max-w-[1000px] md:max-w-[1100px]")}
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader>
@@ -664,9 +659,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
         <div
           className={cn(
             "md:grid md:gap-6",
-            shouldExpandDialog
-              ? "md:grid-cols-[minmax(0,1fr)_minmax(0,280px)]"
-              : "md:grid-cols-[minmax(0,1fr)]"
+            shouldExpandDialog ? "md:grid-cols-[minmax(0,1fr)_minmax(0,280px)]" : "md:grid-cols-[minmax(0,1fr)]"
           )}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -765,16 +758,21 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
               <div className="space-y-2">
                 <label className="text-sm font-medium">Previous Lecture</label>
                 {isLoadingPreviousLecture ? (
-                  <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
+                  <div className="h-23 w-full bg-muted rounded-md animate-pulse" />
                 ) : previousLecture ? (
-                  <div className="flex gap-3 p-3 border border-border rounded-md bg-muted">
+                  <div className="flex gap-3 p-2.5 border border-border rounded-md bg-muted h-23 items-center">
                     {/* Left: Calendar-style date */}
                     {(() => {
-                      const { day, month } = formatDate(previousLecture.dateStudy);
+                      const { day, month, weekday } = formatDate(previousLecture.dateStudy);
                       return (
-                        <div className="shrink-0 w-16 h-16 bg-background border-2 border-border rounded-md flex flex-col items-center justify-center shadow-sm">
-                          <div className="text-2xl font-bold text-foreground">{day}</div>
-                          <div className="text-xs font-semibold text-muted-foreground uppercase">{month}</div>
+                        <div className="shrink-0 w-18 h-18 bg-background border-2 border-border rounded-md flex flex-col items-center justify-center shadow-sm gap-0.5">
+                          <div className="text-xs font-semibold text-muted-foreground uppercase leading-tight">
+                            {weekday}
+                          </div>
+                          <div className="text-xl font-bold text-foreground leading-none">{day}</div>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase leading-tight">
+                            {month}
+                          </div>
                         </div>
                       );
                     })()}
@@ -782,8 +780,9 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
                     {/* Right: Details */}
                     <div className="flex-1 flex flex-col justify-center space-y-1">
                       <div className="text-sm font-semibold text-foreground">
-                        {previousLecture.className} - {getSessionName(previousLecture.section, previousLecture.dateStudy)}{" "}
-                        - Period {previousLecture.period}
+                        {previousLecture.className} -{" "}
+                        {getSessionName(previousLecture.section, previousLecture.dateStudy)} - Period{" "}
+                        {previousLecture.period}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {formatPeriodNumber(previousLecture.distributeProgramPeriod)} -{" "}
@@ -792,7 +791,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
                     </div>
                   </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground p-3 border border-border rounded-md bg-muted">
+                  <div className="text-sm text-muted-foreground p-3 border border-border rounded-md bg-muted h-24 flex items-center">
                     No previous lecture found
                   </div>
                 )}
@@ -826,9 +825,7 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
             <aside className="mt-4 space-y-4 md:mt-0">
               <div className="rounded-md border border-border bg-card p-4">
                 <h3 className="text-sm font-semibold text-foreground">Lecture Feedback</h3>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Retrieved from the weekly lesson assessment book.
-                </p>
+                <p className="text-xs text-muted-foreground mb-3">Retrieved from the weekly lesson assessment book.</p>
                 {isLoadingFeedback ? (
                   <div className="h-24 w-full bg-muted rounded-md animate-pulse" />
                 ) : feedbackError ? (
@@ -836,12 +833,8 @@ export function LessonDialog({ isOpen, onClose, onSave, initialData, cellInfo, w
                 ) : feedback ? (
                   <div className="space-y-3 text-sm">
                     <div>
-                      <div className="font-medium text-foreground">
-                        Period {feedback.distributeProgramPeriod}
-                      </div>
-                      <div className="text-muted-foreground text-xs">
-                        {feedback.distributeProgramName}
-                      </div>
+                      <div className="font-medium text-foreground">Period {feedback.distributeProgramPeriod}</div>
+                      <div className="text-muted-foreground text-xs">{feedback.distributeProgramName}</div>
                     </div>
                     {feedback.teachingComment && (
                       <div>
