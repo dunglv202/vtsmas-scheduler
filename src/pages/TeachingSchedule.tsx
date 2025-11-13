@@ -1,10 +1,11 @@
-import { useState, useEffect, Fragment } from "react";
 import { LessonDialog, type LessonInfo, type ScheduleCell } from "@/components/LessonDialog";
-import { fetchTeachingSchedule, fetchClasses, type TeachingScheduleDetail, type ClassItem } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { fetchClasses, fetchTeachingSchedule, type ClassItem, type TeachingScheduleDetail } from "@/lib/api";
 import { CalendarIcon, Filter } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_ABBREVIATIONS = ["Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7", "CN"];
@@ -370,15 +371,16 @@ export default function TeachingSchedule() {
                 {isLoadingClasses ? (
                   <div className="text-sm text-muted-foreground py-2">Đang tải danh sách lớp...</div>
                 ) : (
-                  <div className="max-h-64 overflow-y-auto space-y-1">
-                    {classes.map((classItem) => {
-                      const isSelected = selectedClasses.has(classItem.className);
-                      return (
-                        <button
-                          key={classItem.id}
-                          type="button"
-                          onClick={() => toggleClassFilter(classItem.className)}
-                          className={`
+                  <ScrollArea className="h-64">
+                    <div className="space-y-1 pr-4">
+                      {classes.map((classItem) => {
+                        const isSelected = selectedClasses.has(classItem.className);
+                        return (
+                          <button
+                            key={classItem.id}
+                            type="button"
+                            onClick={() => toggleClassFilter(classItem.className)}
+                            className={`
                             w-full text-left px-3 py-2 rounded-md text-sm transition-colors
                             ${
                               isSelected
@@ -386,34 +388,35 @@ export default function TeachingSchedule() {
                                 : "hover:bg-accent text-foreground"
                             }
                           `}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={`
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`
                                 w-4 h-4 border-2 rounded flex items-center justify-center
                                 ${isSelected ? "bg-primary border-primary" : "border-border"}
                               `}
-                            >
-                              {isSelected && (
-                                <svg
-                                  className="w-3 h-3 text-primary-foreground"
-                                  fill="none"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
+                              >
+                                {isSelected && (
+                                  <svg
+                                    className="w-3 h-3 text-primary-foreground"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span>{classItem.className}</span>
                             </div>
-                            <span>{classItem.className}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
                 )}
               </div>
             </PopoverContent>
@@ -474,47 +477,63 @@ export default function TeachingSchedule() {
           );
         })}
 
-        {/* Grid cells */}
-        {rows.map((row, rowIndex) => (
-          <Fragment key={`row-${rowIndex}`}>
-            {/* Row label (first column) */}
-            <div className="bg-card p-2 text-sm text-center border-r border-b border-border font-medium sticky left-0 z-5">
-              {row.period === 1 && (
-                <div className="font-semibold text-foreground">{SESSION_LABELS[row.session] ?? row.session}</div>
-              )}
-              <div className="text-xs text-muted-foreground">Tiết {row.period}</div>
-            </div>
+        {isLoadingSchedule ? (
+          <div className="col-span-8 flex items-center justify-center py-6">
+            <svg className="mr-3 size-5 animate-spin text-primary" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            <span className="text-sm text-muted-foreground">Đang tải thời khóa biểu...</span>
+          </div>
+        ) : (
+          <>
+            {/* Grid cells */}
+            {rows.map((row, rowIndex) => (
+              <Fragment key={`row-${rowIndex}`}>
+                {/* Row label (first column) */}
+                <div className="bg-card p-2 text-sm text-center border-r border-b border-border font-medium sticky left-0 z-5">
+                  {row.period === 1 && (
+                    <div className="font-semibold text-foreground">{SESSION_LABELS[row.session] ?? row.session}</div>
+                  )}
+                  <div className="text-xs text-muted-foreground">Tiết {row.period}</div>
+                </div>
 
-            {/* Day cells */}
-            {DAYS.map((day, dayIndex) => {
-              const lesson = getCellLesson(day, row.session, row.period);
-              return (
-                <div
-                  key={`${day}-${rowIndex}`}
-                  onClick={() => handleCellClick(day, row.session, row.period)}
-                  className={`
-                    p-2 min-h-[80px] border-r border-b border-border cursor-pointer
-                    hover:bg-accent transition-colors
-                    ${lesson ? "bg-accent/50" : "bg-background"}
-                    ${dayIndex === DAYS.length - 1 ? "border-r-0" : ""}
-                  `}
-                >
-                  {lesson && (
-                    <div className="text-xs space-y-1">
-                      {lesson.lesson && (
-                        <div className="font-semibold text-foreground line-clamp-2">
-                          {lesson.lessonPeriod !== undefined && `Tiết ${lesson.lessonPeriod} - `}
-                          {lesson.lesson}
+                {/* Day cells */}
+                {DAYS.map((day, dayIndex) => {
+                  const lesson = getCellLesson(day, row.session, row.period);
+                  return (
+                    <div
+                      key={`${day}-${rowIndex}`}
+                      onClick={() => handleCellClick(day, row.session, row.period)}
+                      className={`
+                      p-2 min-h-[80px] border-r border-b border-border cursor-pointer
+                      hover:bg-accent transition-colors
+                      ${lesson ? "bg-accent/50" : "bg-background"}
+                      ${dayIndex === DAYS.length - 1 ? "border-r-0" : ""}
+                    `}
+                    >
+                      {lesson && (
+                        <div className="text-xs space-y-1">
+                          {lesson.lesson && (
+                            <div className="font-semibold text-foreground line-clamp-2">
+                              {lesson.lessonPeriod !== undefined && `Tiết ${lesson.lessonPeriod} - `}
+                              {lesson.lesson}
+                            </div>
+                          )}
+                          {lesson.class && <div className="text-muted-foreground">Lớp: {lesson.class}</div>}
                         </div>
                       )}
-                      {lesson.class && <div className="text-muted-foreground">Lớp: {lesson.class}</div>}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </Fragment>
-        ))}
+                  );
+                })}
+              </Fragment>
+            ))}
+          </>
+        )}
       </div>
 
       {/* Dialog for editing lesson */}

@@ -20,7 +20,7 @@ function App() {
 
 function Layout() {
   return (
-    <div>
+    <div className="min-h-screen">
       <main className="p-8">
         <Outlet />
       </main>
