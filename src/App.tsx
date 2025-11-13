@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import "./App.css";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { CommandMenu } from "./components/CommandMenu";
 import Login from "./pages/Login";
 import TeachingSchedule from "./pages/TeachingSchedule";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,13 +22,16 @@ function App() {
 
 function Layout() {
   return (
-    <ScrollArea className="h-screen">
-      <div className="min-h-screen">
-        <main className="p-8">
-          <Outlet />
-        </main>
-      </div>
-    </ScrollArea>
+    <>
+      <CommandMenu />
+      <ScrollArea className="h-screen">
+        <div className="min-h-screen">
+          <main className="p-8">
+            <Outlet />
+          </main>
+        </div>
+      </ScrollArea>
+    </>
   );
 }
 

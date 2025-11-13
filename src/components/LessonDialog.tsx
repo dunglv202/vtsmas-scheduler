@@ -74,7 +74,7 @@ export function LessonDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className="max-w-fit! outline-0 p-0 gap-0 h-[85vh] flex flex-col pb-6"
+        className="max-w-min! outline-0 p-0 gap-0 h-[85vh] flex flex-col pb-6"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
