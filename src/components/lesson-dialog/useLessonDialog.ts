@@ -885,12 +885,22 @@ export function useLessonDialog({
     setIsSaving(true);
 
     try {
+      let shouldCreateNewSchedule = !teachingScheduleId;
+      let scheduleIdToUse = teachingScheduleId;
+
       // If updating an existing schedule detail, delete the old one first
       if (initialData?.scheduleDetailId && teachingScheduleId) {
         await deleteTeachingScheduleDetails(teachingScheduleId, [initialData.scheduleDetailId]);
+        // After deletion, if this was the only schedule in the week,
+        // the schedule becomes empty and we need to create a new one
+        // We'll try to create a detail first, and if it fails, we'll create a new schedule
+        // But to be safe, we'll check: if we deleted something, we should check if we need a new schedule
+        // For now, we'll set a flag to indicate we might need to create a new schedule
+        // The API will tell us if the schedule is invalid
+        scheduleIdToUse = teachingScheduleId;
       }
 
-      if (!teachingScheduleId) {
+      if (shouldCreateNewSchedule) {
         const dateFromISO = formatDateISO(weekDates![0]);
         const dateToISO = formatDateISO(weekDates![6]);
 
@@ -911,17 +921,43 @@ export function useLessonDialog({
             },
           ],
         });
-      } else {
-        const payload: CreateTeachingScheduleDetailRequest = {
-          ...detailForSchedule,
-          employeeSubstituteId: ZERO_GUID,
-          teachingScheduleId,
-          employeeId: DEFAULT_EMPLOYEE_ID,
-          employeeName: employeeName || DEFAULT_EMPLOYEE_NAME,
-          employeeSubstituteName: "",
-        };
+      } else if (scheduleIdToUse) {
+        // Try to add detail to existing schedule
+        // If this fails because schedule is empty, we'll catch and create new schedule
+        try {
+          const payload: CreateTeachingScheduleDetailRequest = {
+            ...detailForSchedule,
+            employeeSubstituteId: ZERO_GUID,
+            teachingScheduleId: scheduleIdToUse,
+            employeeId: DEFAULT_EMPLOYEE_ID,
+            employeeName: employeeName || DEFAULT_EMPLOYEE_NAME,
+            employeeSubstituteName: "",
+          };
 
-        await createTeachingScheduleDetail(payload);
+          await createTeachingScheduleDetail(payload);
+        } catch (detailError) {
+          // If adding detail fails (e.g., schedule is empty), create a new schedule instead
+          const dateFromISO = formatDateISO(weekDates![0]);
+          const dateToISO = formatDateISO(weekDates![6]);
+
+          await createTeachingSchedule({
+            employeeName: employeeName || DEFAULT_EMPLOYEE_NAME,
+            employeeId: DEFAULT_EMPLOYEE_ID,
+            employeeCode: DEFAULT_EMPLOYEE_CODE,
+            phoneNumber: DEFAULT_PHONE_NUMBER,
+            schoolYearId: DEFAULT_SCHOOL_YEAR_ID,
+            schoolLevelCode: DEFAULT_SCHOOL_LEVEL_CODE,
+            schoolYearCode: DEFAULT_SCHOOL_YEAR_CODE,
+            dateFrom: dateFromISO,
+            dateTo: dateToISO,
+            teachingScheduleDetails: [
+              {
+                ...detailForSchedule,
+                employeeSubstituteId: null,
+              },
+            ],
+          });
+        }
       }
 
       // When updating (deleting old and creating new), we don't have the new scheduleDetailId yet
