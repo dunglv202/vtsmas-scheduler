@@ -1,6 +1,7 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Minus } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ExtrasAccordionProps {
   lectureType: string;
@@ -35,13 +36,14 @@ export function ExtrasAccordion({
       onValueChange={(value: string | undefined) => setExtrasAccordionValue(value)}
     >
       <AccordionItem value="extras" className="border-b-0">
-        <AccordionTrigger className="py-4 focus:ring-0 focus:outline-none">
+        <AccordionTrigger className="py-4 focus:ring-0 focus:outline-none px-1">
           <span>Thông tin bổ sung</span>
-          {extrasAccordionValue === "extras" ? (
-            <Minus className="h-4 w-4 shrink-0" />
-          ) : (
-            <Plus className="h-4 w-4 shrink-0" />
-          )}
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 transition-transform duration-200",
+              extrasAccordionValue !== "extras" && "-rotate-90"
+            )}
+          />
         </AccordionTrigger>
         <AccordionContent className="pt-0 px-1">
           <div className="space-y-4">

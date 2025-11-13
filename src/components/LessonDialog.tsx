@@ -74,7 +74,7 @@ export function LessonDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className="sm:max-w-[500px] outline-0 p-0 gap-0 h-[90vh] flex flex-col"
+        className="max-w-fit outline-0 p-0 gap-0 h-[90vh] flex flex-col"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
@@ -91,7 +91,7 @@ export function LessonDialog({
               error={feedbackState.feedbackError}
             />
 
-            <form id="lesson-form" onSubmit={handleSubmit} className="space-y-4">
+            <form id="lesson-form" onSubmit={handleSubmit} className="space-y-4 sm:max-w-120">
               <div className="space-y-2 px-1">
                 <label className="text-sm font-medium">Lớp</label>
                 <ClassSelector

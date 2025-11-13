@@ -135,14 +135,7 @@ export function useLessonDialog({
   const [equipmentName, setEquipmentName] = useState<string>(initialData?.equipment?.name || "");
   const [equipmentQuantity, setEquipmentQuantity] = useState<string>(initialData?.equipment?.quantity || "");
   const [equipmentType, setEquipmentType] = useState<string>(initialData?.equipment?.type || "");
-  const hasInitialExtras =
-    Boolean(initialData?.lectureType) ||
-    Boolean(initialData?.equipment?.name) ||
-    Boolean(initialData?.equipment?.quantity) ||
-    Boolean(initialData?.equipment?.type);
-  const [extrasAccordionValue, setExtrasAccordionValue] = useState<string | undefined>(
-    hasInitialExtras ? "extras" : undefined
-  );
+  const [extrasAccordionValue, setExtrasAccordionValue] = useState<string | undefined>(undefined);
 
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [lessons, setLessons] = useState<CurriculumItem[]>([]);
@@ -246,14 +239,8 @@ export function useLessonDialog({
       setEquipmentName(initialData?.equipment?.name || "");
       setEquipmentQuantity(initialData?.equipment?.quantity || "");
       setEquipmentType(initialData?.equipment?.type || "");
-      setExtrasAccordionValue(
-        initialData?.lectureType ||
-          initialData?.equipment?.name ||
-          initialData?.equipment?.quantity ||
-          initialData?.equipment?.type
-          ? "extras"
-          : undefined
-      );
+      // Always keep accordion collapsed by default
+      setExtrasAccordionValue(undefined);
     }
   }, [isOpen, initialData, classes]);
 
@@ -269,9 +256,8 @@ export function useLessonDialog({
         setEquipmentName(template.equipment.name || "");
         setEquipmentQuantity(template.equipment.quantity || "");
         setEquipmentType(template.equipment.type || "");
-        if (template.lectureType || template.equipment.name || template.equipment.quantity || template.equipment.type) {
-          setExtrasAccordionValue("extras");
-        }
+        // Always keep accordion collapsed by default
+        setExtrasAccordionValue(undefined);
       }
     } else if (!isOpen) {
       hasLoadedTemplateRef.current = false;
