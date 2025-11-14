@@ -9,12 +9,15 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { clearStoredTokens } from "@/lib/auth";
 import { Calendar, LogOut, User } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const menuItems: {
   icon: React.ReactNode;
   label: string;
-  href: string;
+  href?: string;
+  action?: () => void;
 }[] = [
   {
     icon: <Calendar />,
@@ -29,7 +32,10 @@ const menuItems: {
   {
     icon: <LogOut />,
     label: "Đăng xuất",
-    href: "/logout",
+    action() {
+      clearStoredTokens();
+      window.location.href = "/login";
+    },
   },
 ];
 
@@ -46,17 +52,30 @@ export function AppSidebar() {
         <SidebarMenu className="space-y-2 mt-2">
           {menuItems.map((item, idx) => (
             <SidebarMenuItem key={idx}>
-              <a href={item.href}>
+              {!!item.href ? (
+                <Link to={item.href!}>
+                  <SidebarMenuButton
+                    tooltip={{
+                      children: item.label,
+                      hidden: false,
+                    }}
+                    className="px-3.5"
+                  >
+                    {item.icon}
+                  </SidebarMenuButton>
+                </Link>
+              ) : (
                 <SidebarMenuButton
                   tooltip={{
                     children: item.label,
                     hidden: false,
                   }}
                   className="px-3.5"
+                  onClick={item.action}
                 >
                   {item.icon}
                 </SidebarMenuButton>
-              </a>
+              )}
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
