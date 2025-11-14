@@ -22,6 +22,7 @@ import {
 } from "@/lib/api";
 import { CalendarIcon, Filter, RefreshCw } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 const DAYS = [
   "Monday",
@@ -601,9 +602,10 @@ export default function TeachingSchedule() {
           return (
             <div
               key={day}
-              className={`p-3 font-semibold text-center border-r border-b border-border sticky top-0 z-10 last:border-r-0 ${
+              className={cn(
+                "p-3 font-semibold text-center border-r border-b border-border sticky top-0 z-10 nth-[8n]:border-r-0",
                 isToday ? "bg-primary text-primary-foreground" : "bg-muted"
-              }`}
+              )}
             >
               <div className="text-sm">{DAY_ABBREVIATIONS[index]}</div>
               <div

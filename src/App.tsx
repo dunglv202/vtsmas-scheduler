@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import TeachingSchedule from "./pages/TeachingSchedule";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider } from "./components/ui/sidebar";
+import { AppSidebar } from "./components/AppSidebar";
 
 function App() {
   return (
@@ -31,9 +32,10 @@ function Layout() {
   return (
     <SidebarProvider>
       <CommandMenu />
+      <AppSidebar />
       <ScrollArea className="h-screen flex-1">
         <div className="min-h-screen">
-          <main className="p-8">
+          <main className="p-12">
             <Outlet />
           </main>
         </div>
