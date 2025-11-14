@@ -7,6 +7,7 @@ import { EmployeeProvider } from "./contexts/EmployeeContext";
 import Login from "./pages/Login";
 import TeachingSchedule from "./pages/TeachingSchedule";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SidebarProvider } from "./components/ui/sidebar";
 
 function App() {
   return (
@@ -28,16 +29,16 @@ function App() {
 
 function Layout() {
   return (
-    <>
+    <SidebarProvider>
       <CommandMenu />
-      <ScrollArea className="h-screen">
+      <ScrollArea className="h-screen flex-1">
         <div className="min-h-screen">
           <main className="p-8">
             <Outlet />
           </main>
         </div>
       </ScrollArea>
-    </>
+    </SidebarProvider>
   );
 }
 
