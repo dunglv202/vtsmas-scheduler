@@ -1,18 +1,6 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
-} from "@/components/ui/field";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field";
 import { Input, InputPassword } from "@/components/ui/input";
 import { useEmployee } from "@/contexts/EmployeeContext";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
@@ -47,9 +35,7 @@ export default function Login() {
       // Redirect to teaching schedule after successful login
       navigate("/teaching-schedule");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Đã xảy ra lỗi khi đăng nhập"
-      );
+      setError(err instanceof Error ? err.message : "Đã xảy ra lỗi khi đăng nhập");
     } finally {
       setIsLoading(false);
     }
@@ -60,13 +46,11 @@ export default function Login() {
       <div>
         <img src="/smas_logo.png" alt="VTSMAS Logo" className="h-10" />
       </div>
-      <div className="flex w-full max-w-lg flex-col gap-6">
+      <div className="flex w-full max-w-md flex-col gap-6">
         <div className="flex flex-col gap-6">
           <Card className="shadow-none border-none">
             <CardHeader className="text-center">
-              <CardTitle className="text-3xl font-bold">
-                Đăng nhập vào tài khoản
-              </CardTitle>
+              <CardTitle className="text-3xl font-bold">Đăng nhập vào tài khoản</CardTitle>
               <CardDescription>Sử dụng thông tin từ vtsmas.vn</CardDescription>
             </CardHeader>
             <CardContent>
@@ -74,30 +58,16 @@ export default function Login() {
                 <FieldGroup>
                   <Field>
                     <FieldLabel htmlFor="username">Tên đăng nhập</FieldLabel>
-                    <Input
-                      id="username"
-                      required
-                      onChange={(e) => setUsername(e.target.value)}
-                      tabIndex={1}
-                    />
+                    <Input id="username" required onChange={(e) => setUsername(e.target.value)} tabIndex={1} />
                   </Field>
                   <Field>
                     <div className="flex items-center">
                       <FieldLabel htmlFor="password">Mật khẩu</FieldLabel>
-                      <a
-                        href="#"
-                        className="ml-auto text-sm underline-offset-4 hover:underline"
-                        tabIndex={4}
-                      >
+                      <a href="#" className="ml-auto text-sm underline-offset-4 hover:underline" tabIndex={4}>
                         Quên mật khẩu?
                       </a>
                     </div>
-                    <InputPassword
-                      id="password"
-                      required
-                      onChange={(e) => setPassword(e.target.value)}
-                      tabIndex={2}
-                    />
+                    <InputPassword id="password" required onChange={(e) => setPassword(e.target.value)} tabIndex={2} />
                   </Field>
                   {error && (
                     <div className="rounded-md bg-red-50 p-4">
@@ -114,10 +84,7 @@ export default function Login() {
                   </FieldSeparator>
                   <Field>
                     <Button variant="outline" type="button">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                      >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                         <path
                           d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
                           fill="currentColor"
@@ -131,8 +98,7 @@ export default function Login() {
             </CardContent>
           </Card>
           <FieldDescription className="px-6 text-center">
-            Bằng việc nhấn Tiếp tục, bạn đồng ý với{" "}
-            <a href="#">Điều khoản Dịch vụ</a> và{" "}
+            Bằng việc nhấn Tiếp tục, bạn đồng ý với <a href="#">Điều khoản Dịch vụ</a> và{" "}
             <a href="#">Chính sách Quyền riêng tư</a> của chúng tôi.
           </FieldDescription>
         </div>
