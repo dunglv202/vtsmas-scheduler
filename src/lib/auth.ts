@@ -67,3 +67,36 @@ export async function login(username: string, password: string): Promise<TokenRe
     throw error;
   }
 }
+
+export async function refreshToken(): Promise<TokenResponse> {
+  const tokens = getStoredTokens();
+  if (!tokens?.refresh_token) {
+    throw new Error("No refresh token available. Please login again.");
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("grant_type", "refresh_token");
+  formData.append("refresh_token", tokens.refresh_token);
+  formData.append("client_id", "backend-admin-app-client");
+  formData.append("client_secret", "1q2w3e*");
+
+  try {
+    const response = await axios.post<TokenResponse>("https://sso.vtsmas.vn/connect/token", formData.toString(), {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
+
+    const newTokens: TokenResponse = response.data;
+    setStoredTokens(newTokens);
+    return newTokens;
+  } catch (error) {
+    // If refresh fails, clear tokens and throw error
+    clearStoredTokens();
+    if (axios.isAxiosError(error)) {
+      const errorText = error.response?.data || error.message;
+      throw new Error(`Token refresh failed: ${error.response?.status} ${error.response?.statusText}. ${errorText}`);
+    }
+    throw error;
+  }
+}
