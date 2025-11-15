@@ -853,3 +853,72 @@ export async function fetchApprovalHistory(
 
   return JSON.parse(responseText) as ApprovalHistoryItem[];
 }
+
+export interface StudentItem {
+  id: string;
+  studentCode: string;
+  fullName: string;
+  dateOfBirth: string;
+  genderCode: string;
+  imageSrc: string;
+  classId: string;
+  className: string;
+  isExemptedFull: boolean;
+  statusCode: string;
+  status: string;
+  fullNameOther: string | null;
+  ethnicCode: string;
+  policyTargetCode: string;
+  priorityEncourageCode: string | null;
+  syncCode: string;
+  syncCodeClass: string | null;
+  identifyNumber: string;
+  studentClassId: string;
+  sortOrder: number;
+  name: string;
+  sortOrderByClass: number;
+  gradeCode: string;
+  enrolmentDate: string;
+}
+
+export async function fetchStudentsByClass(
+  classId: string,
+  schoolYearId: string
+): Promise<StudentItem[]> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const response = await fetch(
+    `https://gateway.vtsmas.vn/api/hoc-sinh/lay-hoc-sinh-theo-lop/${classId}/${schoolYearId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+        "Accept-Language": "vi",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to fetch students: ${response.status} ${response.statusText}. ${errorText}`
+    );
+  }
+
+  // Handle 204 No Content or empty response body
+  if (response.status === 204) {
+    return [];
+  }
+
+  const responseText = await response.text();
+
+  // Handle empty response body (no content)
+  if (!responseText.trim()) {
+    return [];
+  }
+
+  return JSON.parse(responseText) as StudentItem[];
+}

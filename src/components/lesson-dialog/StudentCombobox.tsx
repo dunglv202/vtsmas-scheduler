@@ -1,0 +1,85 @@
+import * as React from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface StudentComboboxOption {
+  value: string;
+  label: string;
+}
+
+interface StudentComboboxProps {
+  options: StudentComboboxOption[];
+  value?: string;
+  onValueChange?: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}
+
+export function StudentCombobox({
+  options,
+  value,
+  onValueChange,
+  placeholder = "Chọn...",
+  disabled = false,
+  className,
+}: StudentComboboxProps) {
+  const [open, setOpen] = React.useState(false);
+
+  const selectedOption = options.find((option) => option.value === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className={cn(
+            "w-full justify-between h-9 px-3 py-2 text-sm font-normal",
+            !value && "text-muted-foreground",
+            className
+          )}
+        >
+          <span className="truncate text-left flex-1 min-w-0">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Tìm kiếm..." />
+          <CommandList className="max-h-none overflow-visible">
+            <ScrollArea className="h-45">
+              <div className="pr-4">
+                <CommandEmpty>Không tìm thấy</CommandEmpty>
+                <CommandGroup>
+                  {options.map((option) => (
+                    <CommandItem
+                      key={option.value}
+                      value={option.label}
+                      onSelect={() => {
+                        onValueChange?.(option.value === value ? "" : option.value);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")} />
+                      {option.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </div>
+            </ScrollArea>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}

@@ -20,6 +20,7 @@ import type { LessonInfo, ScheduleCell } from "./lesson-dialog/types";
 import { BookmarkIcon } from "lucide-react";
 import type { ApprovalHistoryItem } from "@/lib/api";
 import { LectureRecordDialog } from "./lesson-dialog/LectureRecordDialog";
+import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import React from "react";
 export type { LessonInfo, LessonEquipment, ScheduleCell } from "./lesson-dialog/types";
 
@@ -46,6 +47,7 @@ export function LessonDialog({
   employeeName,
   approvalHistory = [],
 }: LessonDialogProps) {
+  const { schoolYear } = useSchoolYear();
   // Check if the latest approval is true
   const isApproved = React.useMemo(() => {
     if (!approvalHistory || approvalHistory.length === 0) return false;
@@ -99,7 +101,7 @@ export function LessonDialog({
         // Find the viewport element and scroll to top
         const viewport = scrollAreaRef.current?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement;
         if (viewport) {
-          viewport.scrollTo({ top: 0, behavior: 'smooth' });
+          viewport.scrollTo({ top: 0, behavior: "smooth" });
         }
       }, 100);
     }
@@ -119,124 +121,121 @@ export function LessonDialog({
 
         <div ref={scrollAreaRef} className="flex-1 min-h-0">
           <ScrollArea className="h-full px-5">
-          <div className="space-y-6 pb-6">
-            <FeedbackSection
-              shouldShow={shouldShowFeedback}
-              isLoading={feedbackState.isLoading}
-              feedback={feedbackState.feedback}
-              error={feedbackState.feedbackError}
-            />
-
-            <form id="lesson-form" onSubmit={handleSubmit} className="space-y-4 sm:w-120">
-              <div className="space-y-2 px-1">
-                <label className="text-sm font-medium">Lớp</label>
-                <ClassSelector
-                  classes={classState.classes}
-                  selectedClassId={classState.selectedClassId}
-                  isLoading={classState.isLoading}
-                  error={classState.error}
-                  onSelect={classState.onSelect}
-                />
-              </div>
-
-              <div className="space-y-2 px-1">
-                <label className="text-sm font-medium">Môn học</label>
-                <SubjectSelector
-                  subjects={subjectState.subjects}
-                  selectedSubjectCode={subjectState.selectedSubjectCode}
-                  isLoading={subjectState.isLoading}
-                  error={subjectState.error}
-                  onChange={subjectState.onChange}
-                />
-              </div>
-
-              <LessonSelector
-                lessons={lessonState.lessons}
-                selectedLessonId={lessonState.selectedLessonId}
-                isLoading={lessonState.isLoading}
-                error={lessonState.error}
-                selectedClassId={classState.selectedClassId}
-                selectedSubjectCode={subjectState.selectedSubjectCode}
-                onChange={lessonState.onChange}
+            <div className="space-y-6 pb-6">
+              <FeedbackSection
+                shouldShow={shouldShowFeedback}
+                isLoading={feedbackState.isLoading}
+                feedback={feedbackState.feedback}
+                error={feedbackState.feedbackError}
               />
 
-              {classState.selectedClassId && (
+              <form id="lesson-form" onSubmit={handleSubmit} className="space-y-4 sm:w-120">
                 <div className="space-y-2 px-1">
-                  <label className="text-sm font-medium">Tiết dạy trước</label>
-                  <PreviousLectureCard
-                    previousLecture={previousLectureState.previousLecture}
-                    isLoading={previousLectureState.isLoading}
+                  <label className="text-sm font-medium">Lớp</label>
+                  <ClassSelector
+                    classes={classState.classes}
+                    selectedClassId={classState.selectedClassId}
+                    isLoading={classState.isLoading}
+                    error={classState.error}
+                    onSelect={classState.onSelect}
                   />
                 </div>
-              )}
 
-              <NotesField value={notes} onChange={setNotes} />
+                <div className="space-y-2 px-1">
+                  <label className="text-sm font-medium">Môn học</label>
+                  <SubjectSelector
+                    subjects={subjectState.subjects}
+                    selectedSubjectCode={subjectState.selectedSubjectCode}
+                    isLoading={subjectState.isLoading}
+                    error={subjectState.error}
+                    onChange={subjectState.onChange}
+                  />
+                </div>
 
-              <div className="-mt-5">
-                <ExtrasAccordion
-                  lectureType={extrasState.lectureType}
-                  setLectureType={extrasState.setLectureType}
-                  equipmentName={extrasState.equipmentName}
-                  setEquipmentName={extrasState.setEquipmentName}
-                  equipmentQuantity={extrasState.equipmentQuantity}
-                  setEquipmentQuantity={extrasState.setEquipmentQuantity}
-                  equipmentType={extrasState.equipmentType}
-                  setEquipmentType={extrasState.setEquipmentType}
-                  extrasAccordionValue={extrasState.extrasAccordionValue}
-                  setExtrasAccordionValue={extrasState.setExtrasAccordionValue}
+                <LessonSelector
+                  lessons={lessonState.lessons}
+                  selectedLessonId={lessonState.selectedLessonId}
+                  isLoading={lessonState.isLoading}
+                  error={lessonState.error}
+                  selectedClassId={classState.selectedClassId}
+                  selectedSubjectCode={subjectState.selectedSubjectCode}
+                  onChange={lessonState.onChange}
                 />
-              </div>
 
-              {saveError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {saveError}
-                </p>
-              )}
+                {classState.selectedClassId && (
+                  <div className="space-y-2 px-1">
+                    <label className="text-sm font-medium">Tiết dạy trước</label>
+                    <PreviousLectureCard
+                      previousLecture={previousLectureState.previousLecture}
+                      isLoading={previousLectureState.isLoading}
+                    />
+                  </div>
+                )}
 
-              {unscheduleError && (
-                <p className="text-sm text-destructive" role="alert">
-                  {unscheduleError}
-                </p>
-              )}
+                <NotesField value={notes} onChange={setNotes} />
 
-              <DialogFooter className="p-0">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  onClick={handleToggleBookmark}
-                  title={isBookmarked ? "Xóa mẫu đã lưu" : "Lưu mẫu"}
-                >
-                  <BookmarkIcon className="h-4 w-4" fill={isBookmarked ? "currentColor" : "none"} />
-                </Button>
-                {isApproved ? (
+                <div className="-mt-5">
+                  <ExtrasAccordion
+                    lectureType={extrasState.lectureType}
+                    setLectureType={extrasState.setLectureType}
+                    equipmentName={extrasState.equipmentName}
+                    setEquipmentName={extrasState.setEquipmentName}
+                    equipmentQuantity={extrasState.equipmentQuantity}
+                    setEquipmentQuantity={extrasState.setEquipmentQuantity}
+                    equipmentType={extrasState.equipmentType}
+                    setEquipmentType={extrasState.setEquipmentType}
+                    extrasAccordionValue={extrasState.extrasAccordionValue}
+                    setExtrasAccordionValue={extrasState.setExtrasAccordionValue}
+                  />
+                </div>
+
+                {saveError && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {saveError}
+                  </p>
+                )}
+
+                {unscheduleError && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {unscheduleError}
+                  </p>
+                )}
+
+                <DialogFooter className="p-0">
                   <Button
                     type="button"
-                    onClick={() => setIsRecordDialogOpen(true)}
+                    variant="secondary"
+                    size="icon"
+                    onClick={handleToggleBookmark}
+                    title={isBookmarked ? "Xóa mẫu đã lưu" : "Lưu mẫu"}
                   >
-                    Sổ ghi đầu bài
+                    <BookmarkIcon className="h-4 w-4" fill={isBookmarked ? "currentColor" : "none"} />
                   </Button>
-                ) : (
-                  <>
-                    {canUnschedule && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleUnschedule}
-                        disabled={isUnscheduling || isSaving}
-                      >
-                        {isUnscheduling ? "Đang xóa..." : "Hủy lịch"}
-                      </Button>
-                    )}
-                    <Button type="submit" disabled={isSaving || isUnscheduling}>
-                      {isSaving ? "Đang lưu..." : "Lưu"}
+                  {isApproved ? (
+                    <Button type="button" onClick={() => setIsRecordDialogOpen(true)}>
+                      Sổ ghi đầu bài
                     </Button>
-                  </>
-                )}
-              </DialogFooter>
-            </form>
-          </div>
-        </ScrollArea>
+                  ) : (
+                    <>
+                      {canUnschedule && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleUnschedule}
+                          disabled={isUnscheduling || isSaving}
+                        >
+                          {isUnscheduling ? "Đang xóa..." : "Hủy lịch"}
+                        </Button>
+                      )}
+                      <Button type="submit" disabled={isSaving || isUnscheduling}>
+                        {isSaving ? "Đang lưu..." : "Lưu"}
+                      </Button>
+                    </>
+                  )}
+                </DialogFooter>
+              </form>
+            </div>
+          </ScrollArea>
         </div>
       </DialogContent>
 
@@ -246,6 +245,13 @@ export function LessonDialog({
         onSave={() => {
           refetchFeedback();
         }}
+        classId={classState.selectedClassId}
+        schoolYearId={schoolYear?.schoolYearId || ""}
+        lessonName={lessonState.lessons.find((l) => l.id === lessonState.selectedLessonId)?.name || ""}
+        className={classState.classes.find((c) => c.id === classState.selectedClassId)?.className || ""}
+        cellInfo={cellInfo}
+        weekDates={weekDates}
+        teacherName={employeeName || ""}
       />
     </Dialog>
   );
