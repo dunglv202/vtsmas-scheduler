@@ -192,20 +192,17 @@ export function LectureRecordDialog({
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [selectedStudents, setSelectedStudents] = useState<StudentItem[]>([]);
   const [students, setStudents] = useState<StudentItem[]>([]);
-  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [studentsError, setStudentsError] = useState<string | null>(null);
 
   // Fetch students when classId and schoolYearId are available
   useEffect(() => {
     if (!isOpen || !classId || !schoolYearId) {
       setStudents([]);
-      setIsLoadingStudents(false);
       setStudentsError(null);
       return;
     }
 
     const loadStudents = async () => {
-      setIsLoadingStudents(true);
       setStudentsError(null);
       try {
         const fetchedStudents = await fetchStudentsByClass(classId, schoolYearId);
@@ -214,8 +211,6 @@ export function LectureRecordDialog({
         console.error("Failed to fetch students:", error);
         setStudentsError(error instanceof Error ? error.message : "Không thể tải danh sách học sinh");
         setStudents([]);
-      } finally {
-        setIsLoadingStudents(false);
       }
     };
 
