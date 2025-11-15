@@ -1,3 +1,5 @@
+import axios from "axios";
+
 export interface TokenResponse {
   access_token: string;
   refresh_token: string;
@@ -35,37 +37,33 @@ export function clearStoredTokens(): void {
   }
 }
 
-export async function login(
-  username: string,
-  password: string
-): Promise<TokenResponse> {
+export async function login(username: string, password: string): Promise<TokenResponse> {
   const formData = new URLSearchParams();
   formData.append("grant_type", "password");
   formData.append(
     "scope",
-    "openid profile IdentityService TenantService InternalGateway BackendAdminAppGateway EmployeeService CategoryService SmasCustomerService AdminSettingService SettingService ClassroomSupervisorService StudentService ScoreBookService MongoDynamicPageService"
+    "openid profile offline_access IdentityService TenantService InternalGateway BackendAdminAppGateway EmployeeService CategoryService SmasCustomerService AdminSettingService SettingService ClassroomSupervisorService StudentService ScoreBookService MongoDynamicPageService"
   );
   formData.append("username", username);
   formData.append("password", password);
   formData.append("client_id", "backend-admin-app-client");
   formData.append("client_secret", "1q2w3e*");
 
-  const response = await fetch("https://sso.vtsmas.vn/connect/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: formData.toString(),
-  });
+  try {
+    const response = await axios.post<TokenResponse>("https://sso.vtsmas.vn/connect/token", formData.toString(), {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Login failed: ${response.status} ${response.statusText}. ${errorText}`
-    );
+    const tokens: TokenResponse = response.data;
+    setStoredTokens(tokens);
+    return tokens;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorText = error.response?.data || error.message;
+      throw new Error(`Login failed: ${error.response?.status} ${error.response?.statusText}. ${errorText}`);
+    }
+    throw error;
   }
-
-  const tokens: TokenResponse = await response.json();
-  setStoredTokens(tokens);
-  return tokens;
 }

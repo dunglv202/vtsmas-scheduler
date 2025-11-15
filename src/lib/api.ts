@@ -1,3 +1,39 @@
+import axios, { type AxiosInstance, type AxiosError } from "axios";
+import { getStoredTokens } from "./auth";
+
+// Create axios instance with auth token interceptor
+const apiClient: AxiosInstance = axios.create({
+  headers: {
+    "Accept-Language": "vi",
+  },
+});
+
+// Request interceptor to add auth token
+apiClient.interceptors.request.use(
+  (config) => {
+    const tokens = getStoredTokens();
+    if (tokens?.access_token) {
+      config.headers.Authorization = `Bearer ${tokens.access_token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      // Handle unauthorized - could redirect to login
+      console.error("Unauthorized: Please login again");
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Simple in-memory cache with expiration
 interface CacheEntry<T> {
   data: T;
@@ -63,29 +99,25 @@ export async function fetchSchoolYears(): Promise<SchoolYear[]> {
     throw new Error("No access token found. Please login first.");
   }
 
-  const response = await fetch("https://gateway.vtsmas.vn/api/danh-muc-truong/nam-hoc-nha-truong/tat-ca", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Accept-Language": "vi",
-    },
-  });
+  try {
+    const response = await apiClient.get<SchoolYear[]>(
+      "https://gateway.vtsmas.vn/api/danh-muc-truong/nam-hoc-nha-truong/tat-ca"
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch school years: ${response.status} ${response.statusText}. ${errorText}`);
+    if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+      return [];
+    }
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch school years: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  if (response.status === 204) {
-    return [];
-  }
-
-  const responseText = await response.text();
-  if (!responseText.trim()) {
-    return [];
-  }
-
-  return JSON.parse(responseText) as SchoolYear[];
 }
 
 export interface SchoolYearDateRange {
@@ -99,28 +131,30 @@ export async function fetchSchoolYearDateRange(schoolYearId: string): Promise<Sc
     throw new Error("No access token found. Please login first.");
   }
 
-  const url = `https://gateway.vtsmas.vn/api/can-bo/cau-hinh-tuan/ngay-lon-nho-trong-nam/${schoolYearId}`;
+  try {
+    const response = await apiClient.get<SchoolYearDateRange>(
+      `https://gateway.vtsmas.vn/api/can-bo/cau-hinh-tuan/ngay-lon-nho-trong-nam/${schoolYearId}`,
+      {
+        headers: {
+          Accept: "application/json, text/plain, */*",
+        },
+      }
+    );
 
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Accept-Language": "vi",
-      Accept: "application/json, text/plain, */*",
-    },
-  });
+    if (!response.data) {
+      throw new Error("Empty response from school year date range API");
+    }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch school year date range: ${response.status} ${response.statusText}. ${errorText}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch school year date range: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  const responseText = await response.text();
-  if (!responseText.trim()) {
-    throw new Error("Empty response from school year date range API");
-  }
-
-  return JSON.parse(responseText) as SchoolYearDateRange;
 }
 
 export interface SubjectItem {
@@ -149,39 +183,29 @@ export async function fetchSubjects(schoolLevelCode: string = "03"): Promise<Sub
     throw new Error("No access token found. Please login first.");
   }
 
-  const response = await fetch(
-    `https://gateway.vtsmas.vn/api/cau-hinh/danh-muc/loai-danh-muc/DM_MON_HOC/${schoolLevelCode}?IsSort=true`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${tokens.access_token}`,
-        "Accept-Language": "vi",
-      },
+  try {
+    const response = await apiClient.get<SubjectItem[]>(
+      `https://gateway.vtsmas.vn/api/cau-hinh/danh-muc/loai-danh-muc/DM_MON_HOC/${schoolLevelCode}?IsSort=true`
+    );
+
+    if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+      apiCache.set(cacheKey, []);
+      return [];
     }
-  );
 
-  if (response.status === 204) {
-    apiCache.set(cacheKey, []);
-    return [];
+    const result = response.data;
+    apiCache.set(cacheKey, result, 60 * 60 * 1000);
+    return result;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch subjects: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch subjects: ${response.status} ${response.statusText}. ${errorText}`);
-  }
-
-  const responseText = await response.text();
-
-  if (!responseText.trim()) {
-    apiCache.set(cacheKey, []);
-    return [];
-  }
-
-  const result = JSON.parse(responseText) as SubjectItem[];
-  apiCache.set(cacheKey, result, 60 * 60 * 1000);
-  return result;
 }
-import { getStoredTokens } from "./auth";
 
 export interface CurriculumItem {
   id: string;
@@ -282,22 +306,22 @@ export async function fetchCurriculum(filter?: CurriculumFilter): Promise<Curric
     sortDirection: 0,
   };
 
-  const response = await fetch("https://gateway.vtsmas.vn/api/can-bo/phan-phoi-chuong-trinh/phan-trang", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Accept-Language": "vi",
-    },
-    body: JSON.stringify(requestBody),
-  });
+  try {
+    const response = await apiClient.post<CurriculumResponse>(
+      "https://gateway.vtsmas.vn/api/can-bo/phan-phoi-chuong-trinh/phan-trang",
+      requestBody
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch curriculum: ${response.status} ${response.statusText}. ${errorText}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch curriculum: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 export interface ClassItem {
@@ -389,24 +413,22 @@ export async function fetchClasses(filter?: ClassFilter): Promise<ClassResponse>
     },
   };
 
-  const response = await fetch("https://gateway.vtsmas.vn/api/hoc-sinh/lop-hoc/phan-trang", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Accept-Language": "vi",
-    },
-    body: JSON.stringify(requestBody),
-  });
+  try {
+    const response = await apiClient.post<ClassResponse>(
+      "https://gateway.vtsmas.vn/api/hoc-sinh/lop-hoc/phan-trang",
+      requestBody
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch classes: ${response.status} ${response.statusText}. ${errorText}`);
+    const result = response.data;
+    apiCache.set(cacheKey, result, 60 * 60 * 1000);
+    return result;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorText = error.response?.data || error.message;
+      throw new Error(`Failed to fetch classes: ${error.response?.status} ${error.response?.statusText}. ${errorText}`);
+    }
+    throw error;
   }
-
-  const result = await response.json();
-  apiCache.set(cacheKey, result, 60 * 60 * 1000);
-  return result;
 }
 
 export interface TeachingScheduleDetail {
@@ -483,35 +505,30 @@ export async function fetchTeachingSchedule(
   const fromDate = dateFrom instanceof Date ? formatDate(dateFrom) : dateFrom;
   const toDate = dateTo instanceof Date ? formatDate(dateTo) : dateTo;
 
-  const response = await fetch(
-    `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/theo-tuan/${fromDate}/${toDate}/${employeeId}/${schoolYearId}/${schoolLevelCode}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${tokens.access_token}`,
-        "Accept-Language": "vi",
-      },
+  try {
+    const response = await apiClient.get<TeachingScheduleResponse>(
+      `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/theo-tuan/${fromDate}/${toDate}/${employeeId}/${schoolYearId}/${schoolLevelCode}`
+    );
+
+    // Handle 204 No Content or empty response body
+    if (response.status === 204 || !response.data) {
+      return null;
     }
-  );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch teaching schedule: ${response.status} ${response.statusText}. ${errorText}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return null;
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch teaching schedule: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  // Handle 204 No Content or empty response body
-  if (response.status === 204) {
-    return null;
-  }
-
-  const responseText = await response.text();
-
-  // Handle empty response body (no content)
-  if (!responseText.trim()) {
-    return null;
-  }
-
-  return JSON.parse(responseText) as TeachingScheduleResponse;
 }
 
 export interface CreateTeachingScheduleDetailRequest {
@@ -585,21 +602,16 @@ export async function createTeachingScheduleDetail(payload: CreateTeachingSchedu
     throw new Error("No access token found. Please login first.");
   }
 
-  const response = await fetch("https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/tao/tung-chi-tiet", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Content-Type": "application/json",
-      "Accept-Language": "vi",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to create teaching schedule detail: ${response.status} ${response.statusText}. ${errorText}`
-    );
+  try {
+    await apiClient.post("https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/tao/tung-chi-tiet", payload);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to create teaching schedule detail: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
 }
 
@@ -611,31 +623,30 @@ export async function createTeachingSchedule(
     throw new Error("No access token found. Please login first.");
   }
 
-  const response = await fetch("https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/tao", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Content-Type": "application/json",
-      "Accept-Language": "vi",
-    },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const response = await apiClient.post<TeachingScheduleResponse>(
+      "https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/tao",
+      payload
+    );
 
-  if (!response.ok && response.status !== 204) {
-    const errorText = await response.text();
-    throw new Error(`Failed to create teaching schedule: ${response.status} ${response.statusText}. ${errorText}`);
+    if (response.status === 204 || !response.data) {
+      return null;
+    }
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return null;
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to create teaching schedule: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  if (response.status === 204) {
-    return null;
-  }
-
-  const text = await response.text();
-  if (!text.trim()) {
-    return null;
-  }
-
-  return JSON.parse(text) as TeachingScheduleResponse;
 }
 
 export async function deleteTeachingScheduleDetails(
@@ -651,21 +662,23 @@ export async function deleteTeachingScheduleDetails(
     throw new Error("No schedule detail IDs provided for deletion.");
   }
 
-  const response = await fetch(`https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/xoa/${teachingScheduleId}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Content-Type": "application/json",
-      "Accept-Language": "vi",
-    },
-    body: JSON.stringify(scheduleDetailIds),
-  });
-
-  if (!response.ok && response.status !== 204) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to delete teaching schedule details: ${response.status} ${response.statusText}. ${errorText}`
+  try {
+    await apiClient.post(
+      `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/xoa/${teachingScheduleId}`,
+      scheduleDetailIds
     );
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return;
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to delete teaching schedule details: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
 }
 
@@ -732,34 +745,30 @@ export async function fetchLessonFeedback(payload: LessonFeedbackRequest): Promi
     throw new Error("No access token found. Please login first.");
   }
 
-  const response = await fetch("https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/theo-ngay", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Content-Type": "application/json",
-      "Accept-Language": "vi",
-    },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const response = await apiClient.post<LessonFeedbackResponse>(
+      "https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/theo-ngay",
+      payload
+    );
 
-  if (!response.ok) {
-    if (response.status === 204) {
+    if (response.status === 204 || !response.data) {
       return null;
     }
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch lecture feedback: ${response.status} ${response.statusText}. ${errorText}`);
-  }
 
-  if (response.status === 204) {
-    return null;
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return null;
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch lecture feedback: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  const text = await response.text();
-  if (!text.trim()) {
-    return null;
-  }
-
-  return JSON.parse(text) as LessonFeedbackResponse;
 }
 
 export interface EmployeeInfo {
@@ -817,29 +826,28 @@ export async function fetchEmployeeInfo(employeeId: string, schoolYearId: string
     throw new Error("No access token found. Please login first.");
   }
 
-  const response = await fetch(`https://gateway.vtsmas.vn/api/can-bo/v2/${employeeId}/${schoolYearId}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Accept-Language": "vi",
-    },
-  });
+  try {
+    const response = await apiClient.get<EmployeeInfo>(
+      `https://gateway.vtsmas.vn/api/can-bo/v2/${employeeId}/${schoolYearId}`
+    );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch employee info: ${response.status} ${response.statusText}. ${errorText}`);
+    if (response.status === 204 || !response.data) {
+      throw new Error("No employee information found");
+    }
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 204) {
+        throw new Error("No employee information found");
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch employee info: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  if (response.status === 204) {
-    throw new Error("No employee information found");
-  }
-
-  const responseText = await response.text();
-  if (!responseText.trim()) {
-    throw new Error("Empty response from employee info API");
-  }
-
-  return JSON.parse(responseText) as EmployeeInfo;
 }
 
 export interface ApprovalHistoryItem {
@@ -860,35 +868,30 @@ export async function fetchApprovalHistory(weekTeachingScheduleId: string): Prom
     throw new Error("No access token found. Please login first.");
   }
 
-  const response = await fetch(
-    `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/lich-su-phe-duyet/${weekTeachingScheduleId}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${tokens.access_token}`,
-        "Accept-Language": "vi",
-      },
+  try {
+    const response = await apiClient.get<ApprovalHistoryItem[]>(
+      `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/lich-su-phe-duyet/${weekTeachingScheduleId}`
+    );
+
+    // Handle 204 No Content or empty response body
+    if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+      return [];
     }
-  );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch approval history: ${response.status} ${response.statusText}. ${errorText}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return [];
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch approval history: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  // Handle 204 No Content or empty response body
-  if (response.status === 204) {
-    return [];
-  }
-
-  const responseText = await response.text();
-
-  // Handle empty response body (no content)
-  if (!responseText.trim()) {
-    return [];
-  }
-
-  return JSON.parse(responseText) as ApprovalHistoryItem[];
 }
 
 export interface StudentItem {
@@ -924,35 +927,30 @@ export async function fetchStudentsByClass(classId: string, schoolYearId: string
     throw new Error("No access token found. Please login first.");
   }
 
-  const response = await fetch(
-    `https://gateway.vtsmas.vn/api/hoc-sinh/lay-hoc-sinh-theo-lop/${classId}/${schoolYearId}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${tokens.access_token}`,
-        "Accept-Language": "vi",
-      },
+  try {
+    const response = await apiClient.get<StudentItem[]>(
+      `https://gateway.vtsmas.vn/api/hoc-sinh/lay-hoc-sinh-theo-lop/${classId}/${schoolYearId}`
+    );
+
+    // Handle 204 No Content or empty response body
+    if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+      return [];
     }
-  );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch students: ${response.status} ${response.statusText}. ${errorText}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return [];
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch students: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  // Handle 204 No Content or empty response body
-  if (response.status === 204) {
-    return [];
-  }
-
-  const responseText = await response.text();
-
-  // Handle empty response body (no content)
-  if (!responseText.trim()) {
-    return [];
-  }
-
-  return JSON.parse(responseText) as StudentItem[];
 }
 
 export interface DivisiveConfigurationItem {
@@ -991,34 +989,28 @@ export async function fetchDivisiveConfiguration(
   url.searchParams.append("gradeCode", filter.gradeCode);
   url.searchParams.append("schoolYearId", filter.schoolYearId);
 
-  const response = await fetch(url.toString(), {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Content-Type": "application/json",
-      "Accept-Language": "vi",
-    },
-    body: JSON.stringify([]),
-  });
+  try {
+    const response = await apiClient.post<DivisiveConfigurationItem[]>(url.toString(), []);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch divisive configuration: ${response.status} ${response.statusText}. ${errorText}`);
+    // Handle 204 No Content or empty response body
+    if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+      return [];
+    }
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return [];
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch divisive configuration: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  // Handle 204 No Content or empty response body
-  if (response.status === 204) {
-    return [];
-  }
-
-  const responseText = await response.text();
-
-  // Handle empty response body (no content)
-  if (!responseText.trim()) {
-    return [];
-  }
-
-  return JSON.parse(responseText) as DivisiveConfigurationItem[];
 }
 
 export interface LessonRatingConfig {
@@ -1042,30 +1034,27 @@ export async function fetchLessonRatingConfigs(
 
   const url = `https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/danh-sach-cau-hinh-so-dau-bai-v2/${schoolYearId}/${schoolLevelCode}`;
 
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Content-Type": "application/json",
-      "Accept-Language": "vi",
-    },
-  });
+  try {
+    const response = await apiClient.get<LessonRatingConfig[]>(url);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch lesson rating configs: ${response.status} ${response.statusText}. ${errorText}`);
+    if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+      return [];
+    }
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return [];
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch lesson rating configs: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
-
-  if (response.status === 204) {
-    return [];
-  }
-
-  const responseText = await response.text();
-  if (!responseText.trim()) {
-    return [];
-  }
-
-  return JSON.parse(responseText) as LessonRatingConfig[];
 }
 
 export interface SaveLessonFeedbackRequest {
@@ -1108,18 +1097,15 @@ export async function saveLessonFeedback(payload: SaveLessonFeedbackRequest): Pr
 
   const url = "https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/them-sua-so-dau-bai";
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`,
-      "Content-Type": "application/json",
-      "Accept-Language": "vi",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to save lesson feedback: ${response.status} ${response.statusText}. ${errorText}`);
+  try {
+    await apiClient.post(url, payload);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to save lesson feedback: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
   }
 }
