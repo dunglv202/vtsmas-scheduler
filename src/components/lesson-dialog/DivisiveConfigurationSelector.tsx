@@ -26,7 +26,7 @@ export function DivisiveConfigurationSelector({
 
   return (
     <Select
-      value={selectedDivisiveConfigurationId || undefined}
+      value={selectedDivisiveConfigurationId}
       onValueChange={onChange}
       disabled={disabled || isLoading}
     >
