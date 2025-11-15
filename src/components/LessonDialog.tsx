@@ -59,6 +59,9 @@ export function LessonDialog({
     return sorted[0]?.isApprove === true;
   }, [approvalHistory]);
 
+  // Check if schedule is already added (exists in the schedule)
+  const addedSchedule = Boolean(initialData?.scheduleDetailId);
+
   const [isRecordDialogOpen, setIsRecordDialogOpen] = React.useState(false);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const {
@@ -79,7 +82,6 @@ export function LessonDialog({
     isUnscheduling,
     unscheduleError,
     handleUnschedule,
-    canUnschedule,
     isBookmarked,
     handleToggleBookmark,
     refetchFeedback,
@@ -227,13 +229,14 @@ export function LessonDialog({
                   >
                     <BookmarkIcon className="h-4 w-4" fill={isBookmarked ? "currentColor" : "none"} />
                   </Button>
-                  {isApproved ? (
+                  {isApproved && addedSchedule && (
                     <Button type="button" onClick={() => setIsRecordDialogOpen(true)}>
                       Sổ ghi đầu bài
                     </Button>
-                  ) : (
+                  )}
+                  {!isApproved && (
                     <>
-                      {canUnschedule && (
+                      {addedSchedule && (
                         <Button
                           type="button"
                           variant="outline"

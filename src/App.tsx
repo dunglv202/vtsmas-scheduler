@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider } from "./components/ui/sidebar";
 import { AppSidebar } from "./components/AppSidebar";
+import { Toaster } from "./components/ui/sonner";
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function Layout() {
           <main className="p-12">
             <Outlet />
           </main>
+          <Toaster position="top-center" />
         </div>
       </ScrollArea>
     </SidebarProvider>

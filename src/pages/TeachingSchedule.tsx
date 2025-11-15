@@ -18,6 +18,7 @@ import { CalendarIcon, Filter, RefreshCw } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { vi } from "date-fns/locale";
+import { toast } from "sonner";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DAY_ABBREVIATIONS = ["Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7", "CN"];
@@ -179,7 +180,42 @@ export default function TeachingSchedule() {
     loadClasses();
   }, [schoolYear]);
 
+  // Check if the latest approval is true
+  const isApproved =
+    approvalHistory && approvalHistory.length > 0
+      ? (() => {
+          const sorted = [...approvalHistory].sort(
+            (a, b) => new Date(b.approveDate).getTime() - new Date(a.approveDate).getTime()
+          );
+          return sorted[0]?.isApprove === true;
+        })()
+      : false;
+
+  const getCellKey = (day: string, session: string, period: number) => {
+    return `${day}-${session}-${period}`;
+  };
+
+  const getCellLesson = (day: string, session: string, period: number): LessonInfo | undefined => {
+    const lesson = schedule[getCellKey(day, session, period)];
+    // Filter by selected classes
+    if (selectedClasses.size > 0 && lesson) {
+      if (!lesson.class || !selectedClasses.has(lesson.class)) {
+        return undefined; // Hide this cell if class doesn't match filter
+      }
+    }
+    return lesson;
+  };
+
   const handleCellClick = (day: string, session: string, period: number) => {
+    // Check if trying to create new schedule on an empty cell
+    const cellLesson = getCellLesson(day, session, period);
+
+    // If cell is empty (no existing schedule) and week is approved, show error
+    if (!cellLesson && isApproved) {
+      toast.error("Lịch dạy tuần đã được phê duyệt, không thể thêm lịch mới");
+      return;
+    }
+
     setSelectedCell({ day, session, period });
     setIsDialogOpen(true);
   };
@@ -195,21 +231,6 @@ export default function TeachingSchedule() {
     }
     setIsDialogOpen(false);
     setSelectedCell(null);
-  };
-
-  const getCellKey = (day: string, session: string, period: number) => {
-    return `${day}-${session}-${period}`;
-  };
-
-  const getCellLesson = (day: string, session: string, period: number): LessonInfo | undefined => {
-    const lesson = schedule[getCellKey(day, session, period)];
-    // Filter by selected classes
-    if (selectedClasses.size > 0 && lesson) {
-      if (!lesson.class || !selectedClasses.has(lesson.class)) {
-        return undefined; // Hide this cell if class doesn't match filter
-      }
-    }
-    return lesson;
   };
 
   const toggleClassFilter = (className: string) => {
