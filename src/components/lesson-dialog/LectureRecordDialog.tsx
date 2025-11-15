@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StudentCombobox } from "./StudentCombobox";
+import { Combobox } from "@/components/ui/combobox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { fetchStudentsByClass, fetchLessonRatingConfigs, type StudentItem, type LessonRatingConfig } from "@/lib/api";
 import { translateDay } from "./utils";
@@ -386,7 +386,7 @@ export function LectureRecordDialog({
                   <p className="text-sm text-muted-foreground">Vui lòng chọn lớp trong dialog chính</p>
                 ) : (
                   <>
-                    <StudentCombobox
+                    <Combobox
                       options={availableStudents.map((student) => ({
                         value: student.id,
                         label: `${student.fullName} (${student.studentCode})`,
@@ -394,7 +394,6 @@ export function LectureRecordDialog({
                       value={selectedStudentId}
                       onValueChange={handleStudentSelect}
                       placeholder="Chọn học sinh"
-                      className="hover:bg-background hover:text-muted-foreground dark:hover:bg-input/30"
                     />
                     {studentsError && <p className="text-sm text-destructive">{studentsError}</p>}
                     {selectedStudents.length > 0 && (
