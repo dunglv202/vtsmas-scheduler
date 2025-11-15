@@ -263,8 +263,9 @@ export function LessonDialog({
         }}
         classId={classState.selectedClassId}
         schoolYearId={schoolYear?.schoolYearId || ""}
-        lessonName={lessonState.lessons.find((l) => l.id === lessonState.selectedLessonId)?.name || ""}
         className={classState.classes.find((c) => c.id === classState.selectedClassId)?.className || ""}
+        subjectName={subjectState.subjects.find((s) => s.cateCode === subjectState.selectedSubjectCode)?.cateName || ""}
+        lessonName={feedbackState.feedback?.distributeProgramName || ""}
         cellInfo={cellInfo}
         weekDates={weekDates}
         teacherName={employeeName || ""}

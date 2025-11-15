@@ -24,8 +24,9 @@ interface LectureRecordDialogProps {
   onSave?: () => void;
   classId?: string;
   schoolYearId?: string;
-  lessonName?: string;
   className?: string;
+  subjectName?: string;
+  lessonName?: string;
   cellInfo?: ScheduleCell | null;
   weekDates?: Date[];
   teacherName?: string;
@@ -141,8 +142,9 @@ export function LectureRecordDialog({
   onSave,
   classId,
   schoolYearId,
-  lessonName,
   className,
+  subjectName,
+  lessonName,
   cellInfo,
   weekDates,
   teacherName,
@@ -177,16 +179,7 @@ export function LectureRecordDialog({
     return sessionMap[cellInfo.session] || "";
   }, [cellInfo]);
 
-  // Build dialog description with teaching time info
-  const dialogDescription = React.useMemo(() => {
-    const parts = ["Điền thông tin đánh giá tiết học"];
-    if (weekday) parts.push(weekday);
-    if (sessionName) parts.push(sessionName);
-    if (cellInfo?.period) parts.push(`Tiết ${cellInfo.period}`);
-    if (lessonDate) parts.push(formatDate(lessonDate));
-    return parts.join(" - ");
-  }, [weekday, sessionName, cellInfo?.period, lessonDate]);
-
+  const [lessonTitle, setLessonTitle] = useState<string>("");
   const [rating, setRating] = useState<string>("");
   const [comment, setComment] = useState<string>("");
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
@@ -217,15 +210,19 @@ export function LectureRecordDialog({
     loadStudents();
   }, [isOpen, classId, schoolYearId]);
 
-  // Reset form when dialog closes
+  // Reset form when dialog closes, and autofill lesson title when opening
   useEffect(() => {
     if (!isOpen) {
+      setLessonTitle("");
       setRating("");
       setComment("");
       setSelectedStudentId("");
       setSelectedStudents([]);
+    } else if (lessonName) {
+      // Autofill lesson title from schedule when dialog opens
+      setLessonTitle(lessonName);
     }
-  }, [isOpen]);
+  }, [isOpen, lessonName]);
 
   // Handle student selection
   const handleStudentSelect = (studentId: string) => {
@@ -246,9 +243,20 @@ export function LectureRecordDialog({
   // Get available students (not already selected)
   const availableStudents = students.filter((student) => !selectedStudents.find((s) => s.id === student.id));
 
+  // Build lesson time display: "Thứ Sáu - Sáng - Tiết 3 - 14/11/2025"
+  const lessonTimeDisplay = React.useMemo(() => {
+    const parts: string[] = [];
+    if (weekday) parts.push(weekday);
+    if (sessionName) parts.push(sessionName);
+    if (cellInfo?.period) parts.push(`Tiết ${cellInfo.period}`);
+    if (lessonDate) parts.push(formatDate(lessonDate));
+    return parts.join(" - ");
+  }, [weekday, sessionName, cellInfo?.period, lessonDate]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: Implement API call to save the record
+    console.log("Lesson Title:", lessonTitle);
     console.log("Rating:", rating);
     console.log("Comment:", comment);
     console.log(
@@ -268,24 +276,39 @@ export function LectureRecordDialog({
       >
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
           <DialogTitle>Sổ ghi đầu bài</DialogTitle>
-          <DialogDescription>{dialogDescription}</DialogDescription>
+          <DialogDescription>Điền thông tin đánh giá tiết học.</DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="flex-1 min-h-0 px-5">
-          <div className="space-y-6 pb-6">
-            {(lessonName || className || teacherName) && (
+          <div className="space-y-4 pb-6">
+            {(lessonTimeDisplay || className || subjectName || teacherName) && (
               <section className="rounded-md border border-border bg-card p-4 space-y-2">
                 <h3 className="text-sm font-semibold text-foreground">Thông tin tiết học</h3>
-                {lessonName && (
+                {lessonTimeDisplay && (
                   <p className="text-sm">
-                    <span className="font-medium">Tiết học:</span> {lessonName}
+                    <span className="font-medium">Tiết học:</span> {lessonTimeDisplay}
                   </p>
                 )}
                 {className && <p className="text-sm text-muted-foreground">Lớp: {className}</p>}
+                {subjectName && <p className="text-sm text-muted-foreground">Môn học: {subjectName}</p>}
                 {teacherName && <p className="text-sm text-muted-foreground">Giáo viên: {teacherName}</p>}
               </section>
             )}
             <form id="lesson-record-form" onSubmit={handleSubmit} className="space-y-4 sm:w-120">
+              <div className="space-y-2 px-1">
+                <label htmlFor="lessonTitle" className="text-sm font-medium">
+                  Tên bài học
+                </label>
+                <input
+                  id="lessonTitle"
+                  type="text"
+                  value={lessonTitle}
+                  onChange={(e) => setLessonTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+                  placeholder="Nhập tên bài học"
+                />
+              </div>
+
               <div className="space-y-2 px-1">
                 <label className="text-sm font-medium">Xếp loại giờ học</label>
                 <Select value={rating} onValueChange={setRating}>
