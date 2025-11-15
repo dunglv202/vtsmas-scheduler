@@ -9,6 +9,9 @@ interface LessonSelectorProps {
   selectedClassId: string;
   selectedSubjectCode: string;
   onChange: (value: string) => void;
+  // For manual period input when no lessons exist
+  manualPeriod?: string;
+  onManualPeriodChange?: (value: string) => void;
 }
 
 export function LessonSelector({
@@ -19,7 +22,13 @@ export function LessonSelector({
   selectedClassId,
   selectedSubjectCode,
   onChange,
+  manualPeriod,
+  onManualPeriodChange,
 }: LessonSelectorProps) {
+  const hasLessons = lessons.length > 0;
+  // Show number input when no lessons exist (curriculum not planned)
+  const showNumberInput = !isLoading && selectedClassId && selectedSubjectCode && !hasLessons;
+
   const placeholder = !selectedClassId
     ? "Chọn lớp trước"
     : !selectedSubjectCode
@@ -40,13 +49,25 @@ export function LessonSelector({
       <label htmlFor="lesson" className="text-sm font-medium">
         Tiết học
       </label>
-      <Combobox
-        options={options}
-        value={selectedLessonId}
-        onValueChange={onChange}
-        placeholder={placeholder}
-        disabled={!selectedClassId || !selectedSubjectCode || isLoading}
-      />
+      {showNumberInput ? (
+        <input
+          type="number"
+          min="1"
+          value={manualPeriod || ""}
+          onChange={(e) => onManualPeriodChange?.(e.target.value)}
+          placeholder="Nhập số tiết"
+          disabled={!selectedClassId || !selectedSubjectCode || isLoading}
+          className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+      ) : (
+        <Combobox
+          options={options}
+          value={selectedLessonId}
+          onValueChange={onChange}
+          placeholder={placeholder}
+          disabled={!selectedClassId || !selectedSubjectCode || isLoading}
+        />
+      )}
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );

@@ -68,6 +68,8 @@ interface LessonState {
   isLoading: boolean;
   error: string | null;
   onChange: (value: string) => void;
+  manualPeriod: string;
+  onManualPeriodChange: (value: string) => void;
 }
 
 interface PreviousLectureState {
@@ -139,6 +141,7 @@ export function useLessonDialog({
   const { employee } = useEmployee();
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedLessonId, setSelectedLessonId] = useState<string>("");
+  const [manualPeriod, setManualPeriod] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [selectedSubjectCode, setSelectedSubjectCode] = useState<string>(initialData?.subjectCode || "");
   const [lectureType, setLectureType] = useState<string>(initialData?.lectureType || "Dạy chính");
@@ -217,6 +220,7 @@ export function useLessonDialog({
       previousInitialDataRef.current = undefined;
       setSelectedClassId("");
       setSelectedLessonId("");
+      setManualPeriod("");
       setSelectedSubjectCode("");
       setSelectedDivisiveConfigurationId("");
       setNotes("");
@@ -413,9 +417,7 @@ export function useLessonDialog({
       .then((items) => {
         // Filter by subjectCode and gradeCode
         const filtered = items.filter(
-          (item) =>
-            item.subjectCode === selectedSubjectCode &&
-            item.gradeCodes.includes(selectedClass.gradeLevelCode)
+          (item) => item.subjectCode === selectedSubjectCode && item.gradeCodes.includes(selectedClass.gradeLevelCode)
         );
         // Add default "Chính" option at the beginning (it's already in the list, but we update with filtered items)
         const defaultOption = createDefaultDivisiveConfiguration(
@@ -453,6 +455,7 @@ export function useLessonDialog({
     if (!isOpen || !selectedClassId || !selectedSubjectCode) {
       setLessons([]);
       setSelectedLessonId("");
+      setManualPeriod("");
       setIsLoadingLessons(false);
       return;
     }
@@ -461,6 +464,7 @@ export function useLessonDialog({
     if (!selectedClass) {
       setLessons([]);
       setSelectedLessonId("");
+      setManualPeriod("");
       setIsLoadingLessons(false);
       return;
     }
@@ -469,6 +473,7 @@ export function useLessonDialog({
     setLessonError(null);
     setLessons([]);
     setSelectedLessonId("");
+    setManualPeriod("");
 
     if (!schoolYear) {
       setLessonError("Vui lòng đợi thông tin năm học được tải...");
@@ -476,15 +481,25 @@ export function useLessonDialog({
       return;
     }
 
+    // Get divisive configuration ID if not default (__DEFAULT__ means null)
+    const divisiveConfigId =
+      selectedDivisiveConfigurationId === "__DEFAULT__" ? undefined : selectedDivisiveConfigurationId;
+
     fetchCurriculum({
       subjectCode: selectedSubjectCode,
       gradeCode: selectedClass.gradeLevelCode,
       classId: selectedClassId,
       schoolYearId: schoolYear.schoolYearId,
+      divisiveConfigurationId: divisiveConfigId,
     })
       .then((response) => {
         setLessons(response.items);
         setIsLoadingLessons(false);
+
+        // If no lessons exist and we have initial data with period, set manual period
+        if (response.items.length === 0 && initialData?.lessonPeriod) {
+          setManualPeriod(String(initialData.lessonPeriod));
+        }
 
         if (initialData?.class) {
           const matchedClass = classes.find((cls) => cls.id === selectedClassId);
@@ -538,7 +553,7 @@ export function useLessonDialog({
         );
         setIsLoadingLessons(false);
       });
-  }, [isOpen, selectedClassId, selectedSubjectCode, classes, initialData, schoolYear]);
+  }, [isOpen, selectedClassId, selectedSubjectCode, selectedDivisiveConfigurationId, classes, initialData, schoolYear]);
 
   useEffect(() => {
     if (!isOpen || !selectedClassId || !selectedSubjectCode || !schoolYear) {
@@ -875,7 +890,12 @@ export function useLessonDialog({
       error: divisiveConfigurationError,
       onChange: (value: string) => setSelectedDivisiveConfigurationId(value),
     }),
-    [divisiveConfigurationList, selectedDivisiveConfigurationId, isLoadingDivisiveConfiguration, divisiveConfigurationError]
+    [
+      divisiveConfigurationList,
+      selectedDivisiveConfigurationId,
+      isLoadingDivisiveConfiguration,
+      divisiveConfigurationError,
+    ]
   );
 
   const lessonState: LessonState = useMemo(
@@ -885,8 +905,10 @@ export function useLessonDialog({
       isLoading: isLoadingLessons,
       error: lessonError,
       onChange: (value: string) => setSelectedLessonId(value),
+      manualPeriod,
+      onManualPeriodChange: (value: string) => setManualPeriod(value),
     }),
-    [lessons, selectedLessonId, isLoadingLessons, lessonError]
+    [lessons, selectedLessonId, isLoadingLessons, lessonError, manualPeriod]
   );
 
   const previousLectureState: PreviousLectureState = useMemo(
@@ -955,12 +977,40 @@ export function useLessonDialog({
       return;
     }
 
-    const selectedLessonItem = lessons.find((lesson) => lesson.id === selectedLessonId);
-    if (!selectedLessonItem) {
-      setSaveError("Vui lòng chọn tiết học.");
-      return;
+    // Check if we have lessons or need to use manual period input
+    const hasLessons = lessons.length > 0;
+    let lessonDisplayName: string;
+    let lessonId: string;
+    let lessonPeriod: number;
+    let lessonName: string;
+
+    if (hasLessons) {
+      // When lessons exist, use dropdown selection
+      const selectedLessonItem = lessons.find((lesson) => lesson.id === selectedLessonId);
+      if (!selectedLessonItem) {
+        setSaveError("Vui lòng chọn tiết học.");
+        return;
+      }
+      lessonDisplayName = `${selectedLessonItem.period} - ${selectedLessonItem.name}`;
+      lessonId = selectedLessonItem.id;
+      lessonPeriod = selectedLessonItem.period;
+      lessonName = selectedLessonItem.name;
+    } else {
+      // When no lessons exist, use manual period input
+      if (!manualPeriod || manualPeriod.trim() === "") {
+        setSaveError("Vui lòng nhập số tiết học.");
+        return;
+      }
+      const periodNumber = parseInt(manualPeriod, 10);
+      if (isNaN(periodNumber) || periodNumber < 1) {
+        setSaveError("Số tiết học phải là một số lớn hơn 0.");
+        return;
+      }
+      lessonDisplayName = `Tiết ${periodNumber}`;
+      lessonId = ZERO_GUID; // Use zero GUID when no curriculum
+      lessonPeriod = periodNumber;
+      lessonName = "";
     }
-    const lessonDisplayName = `${selectedLessonItem.period} - ${selectedLessonItem.name}`;
 
     const selectedSubjectItem = subjects.find((subject) => subject.cateCode === selectedSubjectCode);
     if (!selectedSubjectItem) {
@@ -972,8 +1022,12 @@ export function useLessonDialog({
       (item) => item.id === selectedDivisiveConfigurationId
     );
     // Treat "__DEFAULT__" (Chính) as null for backend
-    const divisiveConfigurationId = selectedDivisiveConfigurationId === "__DEFAULT__" ? null : (selectedDivisiveConfigurationItem?.id || null);
-    const divisiveConfigurationName = selectedDivisiveConfigurationId === "__DEFAULT__" ? null : (selectedDivisiveConfigurationItem?.name || mapLectureTypeToDivisiveName(lectureType));
+    const divisiveConfigurationId =
+      selectedDivisiveConfigurationId === "__DEFAULT__" ? null : selectedDivisiveConfigurationItem?.id || null;
+    const divisiveConfigurationName =
+      selectedDivisiveConfigurationId === "__DEFAULT__"
+        ? null
+        : selectedDivisiveConfigurationItem?.name || mapLectureTypeToDivisiveName(lectureType);
 
     const dayIndex = DAY_ORDER.indexOf(cellInfo.day as (typeof DAY_ORDER)[number]);
     if (dayIndex < 0) {
@@ -1030,9 +1084,9 @@ export function useLessonDialog({
       description: trimmedNotes || null,
       divisiveConfigurationId: divisiveConfigurationId,
       divisiveConfigurationName: divisiveConfigurationName,
-      distributeProgramId: selectedLessonItem.id || ZERO_GUID,
-      distributeProgramPeriod: String(selectedLessonItem.period ?? ""),
-      distributeProgramName: selectedLessonItem.name,
+      distributeProgramId: lessonId,
+      distributeProgramPeriod: String(lessonPeriod),
+      distributeProgramName: lessonName,
       isRegisterLearningTool,
       toolName: isRegisterLearningTool ? trimmedEquipmentName || null : null,
       totalTool: isRegisterLearningTool ? trimmedEquipmentQuantity || null : null,
@@ -1125,13 +1179,13 @@ export function useLessonDialog({
 
       onSave({
         lesson: lessonDisplayName,
-        lessonId: selectedLessonItem.id,
+        lessonId: lessonId,
         class: selectedClassItem.className,
         classId: selectedClassItem.id,
         description: trimmedNotes,
         subject: selectedSubjectItem.cateName,
         subjectCode: selectedSubjectItem.cateCode,
-        lessonPeriod: selectedLessonItem.period,
+        lessonPeriod: lessonPeriod,
         gradeCode: selectedClassItem.gradeLevelCode,
         gradeName: selectedClassItem.gradeLevel,
         lectureType: lectureType || undefined,

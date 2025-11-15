@@ -174,6 +174,8 @@ export function LessonDialog({
                   selectedClassId={classState.selectedClassId}
                   selectedSubjectCode={subjectState.selectedSubjectCode}
                   onChange={lessonState.onChange}
+                  manualPeriod={lessonState.manualPeriod}
+                  onManualPeriodChange={lessonState.onManualPeriodChange}
                 />
 
                 {classState.selectedClassId && (

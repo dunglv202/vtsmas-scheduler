@@ -176,6 +176,7 @@ export interface CurriculumFilter {
   gradeCode?: string;
   classId?: string;
   schoolYearId?: string;
+  divisiveConfigurationId?: string;
 }
 
 export async function fetchCurriculum(filter?: CurriculumFilter): Promise<CurriculumResponse> {
@@ -219,6 +220,14 @@ export async function fetchCurriculum(filter?: CurriculumFilter): Promise<Curric
     filterItems.push({
       value: filter.schoolYearId,
       propertyName: "schoolYearId",
+      comparison: 0,
+    });
+  }
+
+  if (filter?.divisiveConfigurationId) {
+    filterItems.push({
+      value: filter.divisiveConfigurationId,
+      propertyName: "divisiveConfigurationId",
       comparison: 0,
     });
   }
