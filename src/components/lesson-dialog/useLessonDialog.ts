@@ -5,6 +5,7 @@ import {
   fetchTeachingSchedule,
   fetchSubjects,
   fetchLessonFeedback,
+  fetchDivisiveConfiguration,
   createTeachingSchedule,
   createTeachingScheduleDetail,
   deleteTeachingScheduleDetails,
@@ -15,6 +16,7 @@ import {
   type TeachingScheduleResponse,
   type SubjectItem,
   type LessonFeedbackDetail,
+  type DivisiveConfigurationItem,
 } from "@/lib/api";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { useEmployee } from "@/contexts/EmployeeContext";
@@ -92,10 +94,19 @@ interface ExtrasState {
   setExtrasAccordionValue: (value: string | undefined) => void;
 }
 
+interface DivisiveConfigurationState {
+  divisiveConfigurationList: DivisiveConfigurationItem[];
+  selectedDivisiveConfigurationId: string;
+  isLoading: boolean;
+  error: string | null;
+  onChange: (value: string) => void;
+}
+
 export interface LessonDialogHookResult {
   dialogTitle: string;
   classState: ClassState;
   subjectState: SubjectState;
+  divisiveConfigurationState: DivisiveConfigurationState;
   lessonState: LessonState;
   previousLectureState: PreviousLectureState;
   feedbackState: FeedbackState;
@@ -139,14 +150,18 @@ export function useLessonDialog({
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [lessons, setLessons] = useState<CurriculumItem[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
+  const [divisiveConfigurationList, setDivisiveConfigurationList] = useState<DivisiveConfigurationItem[]>([]);
+  const [selectedDivisiveConfigurationId, setSelectedDivisiveConfigurationId] = useState<string>("__DEFAULT__");
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
+  const [isLoadingDivisiveConfiguration, setIsLoadingDivisiveConfiguration] = useState(false);
   const [isLoadingPreviousLecture, setIsLoadingPreviousLecture] = useState(false);
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [classError, setClassError] = useState<string | null>(null);
   const [lessonError, setLessonError] = useState<string | null>(null);
   const [subjectError, setSubjectError] = useState<string | null>(null);
+  const [divisiveConfigurationError, setDivisiveConfigurationError] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [previousLecture, setPreviousLecture] = useState<TeachingScheduleDetail | null>(null);
   const [feedback, setFeedback] = useState<LessonFeedbackDetail | null>(null);
@@ -203,6 +218,7 @@ export function useLessonDialog({
       setSelectedClassId("");
       setSelectedLessonId("");
       setSelectedSubjectCode("");
+      setSelectedDivisiveConfigurationId("");
       setNotes("");
       setLectureType("Dạy chính");
       setEquipmentName("");
@@ -211,8 +227,11 @@ export function useLessonDialog({
       setExtrasAccordionValue(undefined);
       setLessons([]);
       setSubjects([]);
+      setDivisiveConfigurationList([]);
       setSubjectError(null);
+      setDivisiveConfigurationError(null);
       setIsLoadingSubjects(false);
+      setIsLoadingDivisiveConfiguration(false);
       setFeedback(null);
       setFeedbackError(null);
       setIsLoadingFeedback(false);
@@ -330,6 +349,105 @@ export function useLessonDialog({
         });
     }
   }, [isOpen, initialData]);
+
+  // Helper function to create the default "Chính" option
+  // Uses a special value "__DEFAULT__" that will be converted to null when saving
+  const createDefaultDivisiveConfiguration = (
+    subjectCode: string,
+    gradeCode: string,
+    schoolLevelCode: string,
+    schoolYearId: string
+  ): DivisiveConfigurationItem => ({
+    id: "__DEFAULT__", // Special value that represents null
+    name: "Chính",
+    subjectCode: subjectCode,
+    subjectName: "",
+    gradeCodes: [gradeCode],
+    schoolYearId: schoolYearId,
+    schoolYearCode: "",
+    schoolLevelCode: schoolLevelCode,
+    schoolLevelName: "",
+    tenantId: "",
+    acronymName: "",
+    numberLessionSemester1: 0,
+    numberLessionSemester2: 0,
+    modId: 0,
+  });
+
+  useEffect(() => {
+    if (!isOpen || !selectedClassId || !selectedSubjectCode || !schoolYear) {
+      setDivisiveConfigurationList([]);
+      setSelectedDivisiveConfigurationId("");
+      setIsLoadingDivisiveConfiguration(false);
+      return;
+    }
+
+    const selectedClass = classes.find((cls) => cls.id === selectedClassId);
+    if (!selectedClass) {
+      setDivisiveConfigurationList([]);
+      setSelectedDivisiveConfigurationId("__DEFAULT__");
+      setIsLoadingDivisiveConfiguration(false);
+      return;
+    }
+
+    // Always set to default "Chính" when class or subject changes
+    setSelectedDivisiveConfigurationId("__DEFAULT__");
+
+    // Add default option immediately so it's available right away
+    const defaultOption = createDefaultDivisiveConfiguration(
+      selectedSubjectCode,
+      selectedClass.gradeLevelCode,
+      selectedClass.schoolLevelCode || DEFAULT_SCHOOL_LEVEL_CODE,
+      schoolYear.schoolYearId
+    );
+    setDivisiveConfigurationList([defaultOption]);
+
+    setIsLoadingDivisiveConfiguration(true);
+    setDivisiveConfigurationError(null);
+
+    fetchDivisiveConfiguration({
+      schoolLevelCode: selectedClass.schoolLevelCode || DEFAULT_SCHOOL_LEVEL_CODE,
+      gradeCode: selectedClass.gradeLevelCode,
+      schoolYearId: schoolYear.schoolYearId,
+    })
+      .then((items) => {
+        // Filter by subjectCode and gradeCode
+        const filtered = items.filter(
+          (item) =>
+            item.subjectCode === selectedSubjectCode &&
+            item.gradeCodes.includes(selectedClass.gradeLevelCode)
+        );
+        // Add default "Chính" option at the beginning (it's already in the list, but we update with filtered items)
+        const defaultOption = createDefaultDivisiveConfiguration(
+          selectedSubjectCode,
+          selectedClass.gradeLevelCode,
+          selectedClass.schoolLevelCode || DEFAULT_SCHOOL_LEVEL_CODE,
+          schoolYear.schoolYearId
+        );
+        setDivisiveConfigurationList([defaultOption, ...filtered]);
+        // Ensure default selection is set to "Chính"
+        setSelectedDivisiveConfigurationId("__DEFAULT__");
+        setIsLoadingDivisiveConfiguration(false);
+      })
+      .catch((error) => {
+        // Even on error, add the default "Chính" option
+        const defaultOption = createDefaultDivisiveConfiguration(
+          selectedSubjectCode,
+          selectedClass.gradeLevelCode,
+          selectedClass.schoolLevelCode || DEFAULT_SCHOOL_LEVEL_CODE,
+          schoolYear.schoolYearId
+        );
+        setDivisiveConfigurationList([defaultOption]);
+        // Always set default selection to "Chính"
+        setSelectedDivisiveConfigurationId("__DEFAULT__");
+        setDivisiveConfigurationError(
+          error instanceof Error
+            ? `Không thể tải danh sách phân môn: ${error.message}`
+            : "Không thể tải danh sách phân môn"
+        );
+        setIsLoadingDivisiveConfiguration(false);
+      });
+  }, [isOpen, selectedClassId, selectedSubjectCode, classes, schoolYear]);
 
   useEffect(() => {
     if (!isOpen || !selectedClassId || !selectedSubjectCode) {
@@ -749,6 +867,17 @@ export function useLessonDialog({
     [subjects, selectedSubjectCode, isLoadingSubjects, subjectError]
   );
 
+  const divisiveConfigurationState: DivisiveConfigurationState = useMemo(
+    () => ({
+      divisiveConfigurationList,
+      selectedDivisiveConfigurationId,
+      isLoading: isLoadingDivisiveConfiguration,
+      error: divisiveConfigurationError,
+      onChange: (value: string) => setSelectedDivisiveConfigurationId(value),
+    }),
+    [divisiveConfigurationList, selectedDivisiveConfigurationId, isLoadingDivisiveConfiguration, divisiveConfigurationError]
+  );
+
   const lessonState: LessonState = useMemo(
     () => ({
       lessons,
@@ -839,6 +968,13 @@ export function useLessonDialog({
       return;
     }
 
+    const selectedDivisiveConfigurationItem = divisiveConfigurationList.find(
+      (item) => item.id === selectedDivisiveConfigurationId
+    );
+    // Treat "__DEFAULT__" (Chính) as null for backend
+    const divisiveConfigurationId = selectedDivisiveConfigurationId === "__DEFAULT__" ? null : (selectedDivisiveConfigurationItem?.id || null);
+    const divisiveConfigurationName = selectedDivisiveConfigurationId === "__DEFAULT__" ? null : (selectedDivisiveConfigurationItem?.name || mapLectureTypeToDivisiveName(lectureType));
+
     const dayIndex = DAY_ORDER.indexOf(cellInfo.day as (typeof DAY_ORDER)[number]);
     if (dayIndex < 0) {
       setSaveError("Không xác định được ngày học.");
@@ -892,8 +1028,8 @@ export function useLessonDialog({
       subjectCode: selectedSubjectItem.cateCode,
       subjectName: selectedSubjectItem.cateName,
       description: trimmedNotes || null,
-      divisiveConfigurationId: null,
-      divisiveConfigurationName: mapLectureTypeToDivisiveName(lectureType),
+      divisiveConfigurationId: divisiveConfigurationId,
+      divisiveConfigurationName: divisiveConfigurationName,
       distributeProgramId: selectedLessonItem.id || ZERO_GUID,
       distributeProgramPeriod: String(selectedLessonItem.period ?? ""),
       distributeProgramName: selectedLessonItem.name,
@@ -1067,6 +1203,7 @@ export function useLessonDialog({
     dialogTitle,
     classState,
     subjectState,
+    divisiveConfigurationState,
     lessonState,
     previousLectureState,
     feedbackState,

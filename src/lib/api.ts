@@ -773,16 +773,13 @@ export async function fetchEmployeeInfo(employeeId: string, schoolYearId: string
     throw new Error("No access token found. Please login first.");
   }
 
-  const response = await fetch(
-    `https://gateway.vtsmas.vn/api/can-bo/v2/${employeeId}/${schoolYearId}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${tokens.access_token}`,
-        "Accept-Language": "vi",
-      },
-    }
-  );
+  const response = await fetch(`https://gateway.vtsmas.vn/api/can-bo/v2/${employeeId}/${schoolYearId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${tokens.access_token}`,
+      "Accept-Language": "vi",
+    },
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -813,9 +810,7 @@ export interface ApprovalHistoryItem {
   modId: number;
 }
 
-export async function fetchApprovalHistory(
-  weekTeachingScheduleId: string
-): Promise<ApprovalHistoryItem[]> {
+export async function fetchApprovalHistory(weekTeachingScheduleId: string): Promise<ApprovalHistoryItem[]> {
   const tokens = getStoredTokens();
   if (!tokens?.access_token) {
     throw new Error("No access token found. Please login first.");
@@ -834,9 +829,7 @@ export async function fetchApprovalHistory(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(
-      `Failed to fetch approval history: ${response.status} ${response.statusText}. ${errorText}`
-    );
+    throw new Error(`Failed to fetch approval history: ${response.status} ${response.statusText}. ${errorText}`);
   }
 
   // Handle 204 No Content or empty response body
@@ -881,10 +874,7 @@ export interface StudentItem {
   enrolmentDate: string;
 }
 
-export async function fetchStudentsByClass(
-  classId: string,
-  schoolYearId: string
-): Promise<StudentItem[]> {
+export async function fetchStudentsByClass(classId: string, schoolYearId: string): Promise<StudentItem[]> {
   const tokens = getStoredTokens();
   if (!tokens?.access_token) {
     throw new Error("No access token found. Please login first.");
@@ -903,9 +893,7 @@ export async function fetchStudentsByClass(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(
-      `Failed to fetch students: ${response.status} ${response.statusText}. ${errorText}`
-    );
+    throw new Error(`Failed to fetch students: ${response.status} ${response.statusText}. ${errorText}`);
   }
 
   // Handle 204 No Content or empty response body
@@ -921,4 +909,70 @@ export async function fetchStudentsByClass(
   }
 
   return JSON.parse(responseText) as StudentItem[];
+}
+
+export interface DivisiveConfigurationItem {
+  id: string;
+  name: string;
+  subjectCode: string;
+  subjectName: string;
+  gradeCodes: string[];
+  schoolYearId: string;
+  schoolYearCode: string;
+  schoolLevelCode: string;
+  schoolLevelName: string;
+  tenantId: string;
+  acronymName: string;
+  numberLessionSemester1: number;
+  numberLessionSemester2: number;
+  modId: number;
+}
+
+export interface DivisiveConfigurationFilter {
+  schoolLevelCode: string;
+  gradeCode: string;
+  schoolYearId: string;
+}
+
+export async function fetchDivisiveConfiguration(
+  filter: DivisiveConfigurationFilter
+): Promise<DivisiveConfigurationItem[]> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const url = new URL("https://gateway.vtsmas.vn/api/danh-muc-truong/cau-hinh-phan-mon/danh-sach");
+  url.searchParams.append("schoolLevelCode", filter.schoolLevelCode);
+  url.searchParams.append("gradeCode", filter.gradeCode);
+  url.searchParams.append("schoolYearId", filter.schoolYearId);
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tokens.access_token}`,
+      "Content-Type": "application/json",
+      "Accept-Language": "vi",
+    },
+    body: JSON.stringify([]),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch divisive configuration: ${response.status} ${response.statusText}. ${errorText}`);
+  }
+
+  // Handle 204 No Content or empty response body
+  if (response.status === 204) {
+    return [];
+  }
+
+  const responseText = await response.text();
+
+  // Handle empty response body (no content)
+  if (!responseText.trim()) {
+    return [];
+  }
+
+  return JSON.parse(responseText) as DivisiveConfigurationItem[];
 }

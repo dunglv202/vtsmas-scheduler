@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ClassSelector } from "./lesson-dialog/ClassSelector";
 import { SubjectSelector } from "./lesson-dialog/SubjectSelector";
+import { DivisiveConfigurationSelector } from "./lesson-dialog/DivisiveConfigurationSelector";
 import { LessonSelector } from "./lesson-dialog/LessonSelector";
 import { PreviousLectureCard } from "./lesson-dialog/PreviousLectureCard";
 import { NotesField } from "./lesson-dialog/NotesField";
@@ -64,6 +65,7 @@ export function LessonDialog({
     dialogTitle,
     classState,
     subjectState,
+    divisiveConfigurationState,
     lessonState,
     previousLectureState,
     feedbackState,
@@ -149,6 +151,18 @@ export function LessonDialog({
                     isLoading={subjectState.isLoading}
                     error={subjectState.error}
                     onChange={subjectState.onChange}
+                  />
+                </div>
+
+                <div className="space-y-2 px-1">
+                  <label className="text-sm font-medium">Phân môn</label>
+                  <DivisiveConfigurationSelector
+                    divisiveConfigurationList={divisiveConfigurationState.divisiveConfigurationList}
+                    selectedDivisiveConfigurationId={divisiveConfigurationState.selectedDivisiveConfigurationId}
+                    isLoading={divisiveConfigurationState.isLoading}
+                    error={divisiveConfigurationState.error}
+                    onChange={divisiveConfigurationState.onChange}
+                    disabled={!classState.selectedClassId || !subjectState.selectedSubjectCode}
                   />
                 </div>
 
