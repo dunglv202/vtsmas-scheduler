@@ -272,6 +272,7 @@ export function LessonDialog({
         }}
         classId={classState.selectedClassId}
         schoolYearId={schoolYear?.schoolYearId || ""}
+        schoolLevelCode={classState.classes.find((c) => c.id === classState.selectedClassId)?.schoolLevelCode || ""}
         className={classState.classes.find((c) => c.id === classState.selectedClassId)?.className || ""}
         subjectName={subjectState.subjects.find((s) => s.cateCode === subjectState.selectedSubjectCode)?.cateName || ""}
         lessonName={feedbackState.feedback?.distributeProgramName || ""}

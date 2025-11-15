@@ -985,3 +985,50 @@ export async function fetchDivisiveConfiguration(
 
   return JSON.parse(responseText) as DivisiveConfigurationItem[];
 }
+
+export interface LessonRatingConfig {
+  id: string;
+  schoolYearId: string;
+  schoolYearCode: string;
+  schoolLevelCode: string;
+  name: string;
+  point: number;
+  note: string;
+}
+
+export async function fetchLessonRatingConfigs(
+  schoolYearId: string,
+  schoolLevelCode: string
+): Promise<LessonRatingConfig[]> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const url = `https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/danh-sach-cau-hinh-so-dau-bai-v2/${schoolYearId}/${schoolLevelCode}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${tokens.access_token}`,
+      "Content-Type": "application/json",
+      "Accept-Language": "vi",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch lesson rating configs: ${response.status} ${response.statusText}. ${errorText}`);
+  }
+
+  if (response.status === 204) {
+    return [];
+  }
+
+  const responseText = await response.text();
+  if (!responseText.trim()) {
+    return [];
+  }
+
+  return JSON.parse(responseText) as LessonRatingConfig[];
+}

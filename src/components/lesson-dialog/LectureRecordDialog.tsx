@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StudentCombobox } from "./StudentCombobox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { fetchStudentsByClass, type StudentItem } from "@/lib/api";
+import { fetchStudentsByClass, fetchLessonRatingConfigs, type StudentItem, type LessonRatingConfig } from "@/lib/api";
 import { translateDay } from "./utils";
 import type { ScheduleCell } from "./types";
 import { X } from "lucide-react";
@@ -24,6 +24,7 @@ interface LectureRecordDialogProps {
   onSave?: () => void;
   classId?: string;
   schoolYearId?: string;
+  schoolLevelCode?: string;
   className?: string;
   subjectName?: string;
   lessonName?: string;
@@ -142,6 +143,7 @@ export function LectureRecordDialog({
   onSave,
   classId,
   schoolYearId,
+  schoolLevelCode,
   className,
   subjectName,
   lessonName,
@@ -186,6 +188,9 @@ export function LectureRecordDialog({
   const [selectedStudents, setSelectedStudents] = useState<StudentItem[]>([]);
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [studentsError, setStudentsError] = useState<string | null>(null);
+  const [ratingConfigs, setRatingConfigs] = useState<LessonRatingConfig[]>([]);
+  const [isLoadingRatingConfigs, setIsLoadingRatingConfigs] = useState<boolean>(false);
+  const [ratingConfigsError, setRatingConfigsError] = useState<string | null>(null);
 
   // Fetch students when classId and schoolYearId are available
   useEffect(() => {
@@ -209,6 +214,33 @@ export function LectureRecordDialog({
 
     loadStudents();
   }, [isOpen, classId, schoolYearId]);
+
+  // Fetch rating configs when schoolYearId and schoolLevelCode are available
+  useEffect(() => {
+    if (!isOpen || !schoolYearId || !schoolLevelCode) {
+      setRatingConfigs([]);
+      setRatingConfigsError(null);
+      setIsLoadingRatingConfigs(false);
+      return;
+    }
+
+    const loadRatingConfigs = async () => {
+      setIsLoadingRatingConfigs(true);
+      setRatingConfigsError(null);
+      try {
+        const configs = await fetchLessonRatingConfigs(schoolYearId, schoolLevelCode);
+        setRatingConfigs(configs);
+      } catch (error) {
+        console.error("Failed to fetch rating configs:", error);
+        setRatingConfigsError(error instanceof Error ? error.message : "Không thể tải danh sách xếp loại");
+        setRatingConfigs([]);
+      } finally {
+        setIsLoadingRatingConfigs(false);
+      }
+    };
+
+    loadRatingConfigs();
+  }, [isOpen, schoolYearId, schoolLevelCode]);
 
   // Reset form when dialog closes, and autofill lesson title when opening
   useEffect(() => {
@@ -311,17 +343,34 @@ export function LectureRecordDialog({
 
               <div className="space-y-2 px-1">
                 <label className="text-sm font-medium">Xếp loại giờ học</label>
-                <Select value={rating} onValueChange={setRating}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Chọn xếp loại" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Tốt">Tốt</SelectItem>
-                    <SelectItem value="Khá">Khá</SelectItem>
-                    <SelectItem value="Trung bình">Trung bình</SelectItem>
-                    <SelectItem value="Yếu">Yếu</SelectItem>
-                  </SelectContent>
-                </Select>
+                {ratingConfigsError ? (
+                  <p className="text-sm text-destructive">{ratingConfigsError}</p>
+                ) : (
+                  <Select
+                    value={rating}
+                    onValueChange={setRating}
+                    disabled={isLoadingRatingConfigs || ratingConfigs.length === 0}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          isLoadingRatingConfigs
+                            ? "Đang tải xếp loại..."
+                            : ratingConfigs.length === 0
+                            ? "Không có xếp loại"
+                            : "Chọn xếp loại"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ratingConfigs.map((config) => (
+                        <SelectItem key={config.id} value={config.id}>
+                          {config.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="space-y-2 px-1">
