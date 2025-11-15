@@ -17,6 +17,7 @@ import {
   saveLessonFeedback,
   type StudentItem,
   type LessonRatingConfig,
+  type LessonFeedbackDetail,
 } from "@/lib/api";
 import { translateDay, SESSION_NAME_TO_NUMBER, formatDateISO } from "./utils";
 import type { ScheduleCell } from "./types";
@@ -40,6 +41,7 @@ interface LectureRecordDialogProps {
   distributeProgramPeriod?: number;
   divisiveConfigurationId?: string | null;
   divisiveConfigurationName?: string | null;
+  feedback?: LessonFeedbackDetail | null;
   cellInfo?: ScheduleCell | null;
   weekDates?: Date[];
   teacherName?: string;
@@ -165,6 +167,7 @@ export function LectureRecordDialog({
   distributeProgramPeriod,
   divisiveConfigurationId,
   divisiveConfigurationName,
+  feedback,
   cellInfo,
   weekDates,
   teacherName,
@@ -262,7 +265,7 @@ export function LectureRecordDialog({
     loadRatingConfigs();
   }, [isOpen, schoolYearId, schoolLevelCode]);
 
-  // Reset form when dialog closes, and autofill lesson title when opening
+  // Reset form when dialog closes, and autofill form when opening
   useEffect(() => {
     if (!isOpen) {
       setLessonTitle("");
@@ -270,11 +273,28 @@ export function LectureRecordDialog({
       setComment("");
       setSelectedStudentId("");
       setSelectedStudents([]);
+    } else if (feedback) {
+      // Pre-fill form from existing feedback
+      setLessonTitle(feedback.distributeProgramName || "");
+      setRating(feedback.configLessonAssessmentBookId || "");
+      setComment(feedback.teachingComment || "");
+      // Note: selectedStudents will be set after students are loaded
     } else if (lessonName) {
-      // Autofill lesson title from schedule when dialog opens
+      // Autofill lesson title from schedule when dialog opens (no existing feedback)
       setLessonTitle(lessonName);
     }
-  }, [isOpen, lessonName]);
+  }, [isOpen, feedback, lessonName]);
+
+  // Pre-fill selected students from feedback after students are loaded
+  useEffect(() => {
+    if (isOpen && feedback && feedback.studentNames && students.length > 0 && selectedStudents.length === 0) {
+      const feedbackStudentIds = feedback.studentNames.map((sn) => sn.studentId);
+      const matchedStudents = students.filter((student) => feedbackStudentIds.includes(student.id));
+      if (matchedStudents.length > 0) {
+        setSelectedStudents(matchedStudents);
+      }
+    }
+  }, [isOpen, feedback, students, selectedStudents.length]);
 
   // Handle student selection
   const handleStudentSelect = (studentId: string) => {

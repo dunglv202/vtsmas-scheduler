@@ -282,6 +282,7 @@ export function LessonDialog({
         distributeProgramPeriod={feedbackState.feedback?.distributeProgramPeriod}
         divisiveConfigurationId={feedbackState.feedback?.divisiveConfigurationId ?? null}
         divisiveConfigurationName={feedbackState.feedback?.divisiveConfigurationName ?? "Chính"}
+        feedback={feedbackState.feedback}
         cellInfo={cellInfo}
         weekDates={weekDates}
         teacherName={employeeName || ""}
