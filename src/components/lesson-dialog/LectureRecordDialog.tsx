@@ -11,8 +11,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { fetchStudentsByClass, fetchLessonRatingConfigs, type StudentItem, type LessonRatingConfig } from "@/lib/api";
-import { translateDay } from "./utils";
+import {
+  fetchStudentsByClass,
+  fetchLessonRatingConfigs,
+  saveLessonFeedback,
+  type StudentItem,
+  type LessonRatingConfig,
+} from "@/lib/api";
+import { translateDay, SESSION_NAME_TO_NUMBER, formatDateISO } from "./utils";
 import type { ScheduleCell } from "./types";
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -27,7 +33,13 @@ interface LectureRecordDialogProps {
   schoolLevelCode?: string;
   className?: string;
   subjectName?: string;
+  subjectCode?: string;
   lessonName?: string;
+  teachingAssignmentId?: string;
+  feedbackId?: string;
+  distributeProgramPeriod?: number;
+  divisiveConfigurationId?: string | null;
+  divisiveConfigurationName?: string | null;
   cellInfo?: ScheduleCell | null;
   weekDates?: Date[];
   teacherName?: string;
@@ -146,7 +158,13 @@ export function LectureRecordDialog({
   schoolLevelCode,
   className,
   subjectName,
+  subjectCode,
   lessonName,
+  teachingAssignmentId,
+  feedbackId,
+  distributeProgramPeriod,
+  divisiveConfigurationId,
+  divisiveConfigurationName,
   cellInfo,
   weekDates,
   teacherName,
@@ -191,6 +209,8 @@ export function LectureRecordDialog({
   const [ratingConfigs, setRatingConfigs] = useState<LessonRatingConfig[]>([]);
   const [isLoadingRatingConfigs, setIsLoadingRatingConfigs] = useState<boolean>(false);
   const [ratingConfigsError, setRatingConfigsError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Fetch students when classId and schoolYearId are available
   useEffect(() => {
@@ -285,19 +305,122 @@ export function LectureRecordDialog({
     return parts.join(" - ");
   }, [weekday, sessionName, cellInfo?.period, lessonDate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement API call to save the record
-    console.log("Lesson Title:", lessonTitle);
-    console.log("Rating:", rating);
-    console.log("Comment:", comment);
-    console.log(
-      "Absent Students:",
-      selectedStudents.map((s) => ({ id: s.id, name: s.fullName }))
-    );
-    // Call onSave callback to trigger feedback refetch
-    onSave?.();
-    onClose();
+
+    if (!classId || !schoolYearId || !schoolLevelCode || !className || !subjectName || !subjectCode) {
+      setSaveError("Thiếu thông tin cần thiết để lưu.");
+      return;
+    }
+
+    if (!cellInfo || !weekDates || !lessonDate) {
+      setSaveError("Thiếu thông tin thời gian.");
+      return;
+    }
+
+    if (!rating) {
+      setSaveError("Vui lòng chọn xếp loại giờ học.");
+      return;
+    }
+
+    if (!lessonTitle.trim()) {
+      setSaveError("Vui lòng nhập tên bài học.");
+      return;
+    }
+
+    if (!teachingAssignmentId) {
+      setSaveError("Thiếu thông tin phân công giảng dạy.");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      // Calculate week range (Monday to Sunday)
+      const getWeekRange = (date: Date) => {
+        const d = new Date(date);
+        const dayOfWeek = d.getDay();
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const monday = new Date(d);
+        monday.setDate(d.getDate() + mondayOffset);
+        monday.setHours(0, 0, 0, 0);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        sunday.setHours(23, 59, 59, 999);
+        return { monday, sunday };
+      };
+
+      const weekRange = getWeekRange(lessonDate);
+      const dateFrom = formatDateISO(weekRange.monday);
+      const dateTo = formatDateISO(weekRange.sunday);
+      const dateStudy = formatDateISO(lessonDate);
+
+      // Convert day name to dayOfWeek number (Monday = 0, Sunday = 6)
+      const dayNameToNumber: Record<string, number> = {
+        Monday: 0,
+        Tuesday: 1,
+        Wednesday: 2,
+        Thursday: 3,
+        Friday: 4,
+        Saturday: 5,
+        Sunday: 6,
+      };
+      const dayOfWeek = dayNameToNumber[cellInfo.day] ?? 0;
+
+      // Convert session to section number
+      const section = SESSION_NAME_TO_NUMBER[cellInfo.session] ?? 0;
+
+      // Get student names array
+      const studentNames = selectedStudents.map((student) => {
+        // Extract first name from fullName (assuming format is "Full Name" or "Last First")
+        const nameParts = student.fullName.trim().split(/\s+/);
+        const firstName = nameParts.length > 0 ? nameParts[nameParts.length - 1] : student.fullName;
+        return {
+          studentName: `${student.fullName} (${student.studentCode})`,
+          name: firstName,
+          studentId: student.id,
+        };
+      });
+
+      const payload = {
+        ...(feedbackId && { id: feedbackId }),
+        dateFrom,
+        dateTo,
+        schoolYearId,
+        schoolLevelCode,
+        classId,
+        className,
+        dayOfWeek,
+        section,
+        dateStudy,
+        period: cellInfo.period,
+        subjectName,
+        subjectCode,
+        distributeProgramName: lessonTitle.trim(),
+        distributeProgramPeriod: distributeProgramPeriod ?? cellInfo.period,
+        divisiveConfigurationId: divisiveConfigurationId ?? null,
+        divisiveConfigurationName: divisiveConfigurationName ?? "Chính",
+        status: 1,
+        studentSkipCount: selectedStudents.length,
+        studentNames,
+        teachingAssignmentId,
+        teachingAssignmentName: teacherName || "",
+        configLessonAssessmentBookId: rating,
+        teachingComment: comment.trim(),
+      };
+
+      await saveLessonFeedback(payload);
+
+      // Call onSave callback to trigger feedback refetch
+      onSave?.();
+      onClose();
+    } catch (error) {
+      console.error("Failed to save lesson feedback:", error);
+      setSaveError(error instanceof Error ? error.message : "Không thể lưu thông tin. Vui lòng thử lại.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -426,12 +549,18 @@ export function LectureRecordDialog({
                 />
               </div>
 
+              {saveError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {saveError}
+                </p>
+              )}
+
               <DialogFooter className="p-0">
-                <Button type="button" variant="outline" onClick={onClose}>
+                <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
                   Hủy
                 </Button>
-                <Button type="submit" disabled={!rating}>
-                  Lưu
+                <Button type="submit" disabled={!rating || !lessonTitle.trim() || isSaving}>
+                  {isSaving ? "Đang lưu..." : "Lưu"}
                 </Button>
               </DialogFooter>
             </form>

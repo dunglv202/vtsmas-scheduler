@@ -1032,3 +1032,59 @@ export async function fetchLessonRatingConfigs(
 
   return JSON.parse(responseText) as LessonRatingConfig[];
 }
+
+export interface SaveLessonFeedbackRequest {
+  id?: string;
+  dateFrom: string;
+  dateTo: string;
+  schoolYearId: string;
+  schoolLevelCode: string;
+  lessonAssessmentBookId?: string;
+  classId: string;
+  className: string;
+  dayOfWeek: number;
+  section: number;
+  dateStudy: string;
+  period: number;
+  subjectName: string;
+  subjectCode: string;
+  distributeProgramName: string;
+  distributeProgramPeriod: number;
+  divisiveConfigurationId: string | null;
+  divisiveConfigurationName: string | null;
+  status: number;
+  studentSkipCount: number;
+  studentNames: Array<{
+    studentName: string;
+    name: string;
+    studentId: string;
+  }>;
+  teachingAssignmentId: string;
+  teachingAssignmentName: string;
+  configLessonAssessmentBookId: string;
+  teachingComment: string;
+}
+
+export async function saveLessonFeedback(payload: SaveLessonFeedbackRequest): Promise<void> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const url = "https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/them-sua-so-dau-bai";
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tokens.access_token}`,
+      "Content-Type": "application/json",
+      "Accept-Language": "vi",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to save lesson feedback: ${response.status} ${response.statusText}. ${errorText}`);
+  }
+}

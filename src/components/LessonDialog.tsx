@@ -275,7 +275,13 @@ export function LessonDialog({
         schoolLevelCode={classState.classes.find((c) => c.id === classState.selectedClassId)?.schoolLevelCode || ""}
         className={classState.classes.find((c) => c.id === classState.selectedClassId)?.className || ""}
         subjectName={subjectState.subjects.find((s) => s.cateCode === subjectState.selectedSubjectCode)?.cateName || ""}
+        subjectCode={subjectState.selectedSubjectCode || ""}
         lessonName={feedbackState.feedback?.distributeProgramName || ""}
+        teachingAssignmentId={feedbackState.feedback?.teachingAssignmentId || teachingScheduleId || ""}
+        feedbackId={feedbackState.feedback?.id}
+        distributeProgramPeriod={feedbackState.feedback?.distributeProgramPeriod}
+        divisiveConfigurationId={feedbackState.feedback?.divisiveConfigurationId ?? null}
+        divisiveConfigurationName={feedbackState.feedback?.divisiveConfigurationName ?? "Chính"}
         cellInfo={cellInfo}
         weekDates={weekDates}
         teacherName={employeeName || ""}
