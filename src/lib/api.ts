@@ -800,3 +800,56 @@ export async function fetchEmployeeInfo(employeeId: string, schoolYearId: string
 
   return JSON.parse(responseText) as EmployeeInfo;
 }
+
+export interface ApprovalHistoryItem {
+  id: string;
+  isApprove: boolean;
+  teachingScheduleId: string;
+  approverId: string;
+  approverName: string;
+  approveDate: string;
+  note: string;
+  tenantId: string;
+  modId: number;
+}
+
+export async function fetchApprovalHistory(
+  weekTeachingScheduleId: string
+): Promise<ApprovalHistoryItem[]> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const response = await fetch(
+    `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/lich-su-phe-duyet/${weekTeachingScheduleId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+        "Accept-Language": "vi",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to fetch approval history: ${response.status} ${response.statusText}. ${errorText}`
+    );
+  }
+
+  // Handle 204 No Content or empty response body
+  if (response.status === 204) {
+    return [];
+  }
+
+  const responseText = await response.text();
+
+  // Handle empty response body (no content)
+  if (!responseText.trim()) {
+    return [];
+  }
+
+  return JSON.parse(responseText) as ApprovalHistoryItem[];
+}

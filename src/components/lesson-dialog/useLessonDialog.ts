@@ -112,6 +112,7 @@ export interface LessonDialogHookResult {
   canUnschedule: boolean;
   isBookmarked: boolean;
   handleToggleBookmark: () => void;
+  refetchFeedback: () => void;
 }
 
 export function useLessonDialog({
@@ -149,6 +150,7 @@ export function useLessonDialog({
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [previousLecture, setPreviousLecture] = useState<TeachingScheduleDetail | null>(null);
   const [feedback, setFeedback] = useState<LessonFeedbackDetail | null>(null);
+  const [feedbackRefetchCounter, setFeedbackRefetchCounter] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isUnscheduling, setIsUnscheduling] = useState(false);
@@ -719,7 +721,7 @@ export function useLessonDialog({
         setFeedbackError(error instanceof Error ? error.message : "Không thể tải nhận xét tiết dạy");
         setIsLoadingFeedback(false);
       });
-  }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, classes, weekDates]);
+  }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, classes, weekDates, feedbackRefetchCounter, schoolYear]);
 
   const dialogTitle = useMemo(() => getDialogTitle(cellInfo), [cellInfo]);
 
@@ -1081,5 +1083,6 @@ export function useLessonDialog({
     canUnschedule,
     isBookmarked,
     handleToggleBookmark,
+    refetchFeedback: () => setFeedbackRefetchCounter((prev) => prev + 1),
   };
 }

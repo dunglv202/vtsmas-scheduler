@@ -6,7 +6,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { useEmployee } from "@/contexts/EmployeeContext";
-import { fetchClasses, fetchTeachingSchedule, type ClassItem, type TeachingScheduleDetail } from "@/lib/api";
+import {
+  fetchClasses,
+  fetchTeachingSchedule,
+  fetchApprovalHistory,
+  type ClassItem,
+  type TeachingScheduleDetail,
+  type ApprovalHistoryItem,
+} from "@/lib/api";
 import { CalendarIcon, Filter, RefreshCw } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -142,6 +149,7 @@ export default function TeachingSchedule() {
   const [teachingScheduleId, setTeachingScheduleId] = useState<string | null>(null);
   const [employeeName, setEmployeeName] = useState<string | null>(null);
   const [refreshCounter, setRefreshCounter] = useState(0);
+  const [approvalHistory, setApprovalHistory] = useState<ApprovalHistoryItem[]>([]);
 
   // Update week dates when selected date changes
   useEffect(() => {
@@ -278,9 +286,19 @@ export default function TeachingSchedule() {
         if (response) {
           setTeachingScheduleId(response.id);
           setEmployeeName(response.employeeName);
+
+          // Fetch approval history
+          try {
+            const history = await fetchApprovalHistory(response.id);
+            setApprovalHistory(history);
+          } catch (error) {
+            console.error("Failed to fetch approval history:", error);
+            setApprovalHistory([]);
+          }
         } else {
           setTeachingScheduleId(null);
           setEmployeeName(null);
+          setApprovalHistory([]);
         }
 
         // Map API response to schedule cells
@@ -341,6 +359,7 @@ export default function TeachingSchedule() {
         console.error("Failed to fetch teaching schedule:", error);
         setTeachingScheduleId(null);
         setEmployeeName(null);
+        setApprovalHistory([]);
         setScheduleError(
           error instanceof Error ? `Không thể tải thời khóa biểu: ${error.message}` : "Không thể tải thời khóa biểu"
         );
@@ -579,6 +598,7 @@ export default function TeachingSchedule() {
         weekDates={weekDates}
         teachingScheduleId={teachingScheduleId}
         employeeName={employeeName}
+        approvalHistory={approvalHistory}
       />
     </div>
   );

@@ -18,6 +18,9 @@ import { FeedbackSection } from "./lesson-dialog/FeedbackSection";
 import { useLessonDialog } from "./lesson-dialog/useLessonDialog";
 import type { LessonInfo, ScheduleCell } from "./lesson-dialog/types";
 import { BookmarkIcon } from "lucide-react";
+import type { ApprovalHistoryItem } from "@/lib/api";
+import { LectureRecordDialog } from "./lesson-dialog/LectureRecordDialog";
+import React from "react";
 export type { LessonInfo, LessonEquipment, ScheduleCell } from "./lesson-dialog/types";
 
 interface LessonDialogProps {
@@ -29,6 +32,7 @@ interface LessonDialogProps {
   weekDates?: Date[];
   teachingScheduleId?: string | null;
   employeeName?: string | null;
+  approvalHistory?: ApprovalHistoryItem[];
 }
 
 export function LessonDialog({
@@ -40,7 +44,20 @@ export function LessonDialog({
   weekDates,
   teachingScheduleId,
   employeeName,
+  approvalHistory = [],
 }: LessonDialogProps) {
+  // Check if the latest approval is true
+  const isApproved = React.useMemo(() => {
+    if (!approvalHistory || approvalHistory.length === 0) return false;
+    // Sort by approveDate descending to get the latest
+    const sorted = [...approvalHistory].sort(
+      (a, b) => new Date(b.approveDate).getTime() - new Date(a.approveDate).getTime()
+    );
+    return sorted[0]?.isApprove === true;
+  }, [approvalHistory]);
+
+  const [isRecordDialogOpen, setIsRecordDialogOpen] = React.useState(false);
+  const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const {
     dialogTitle,
     classState,
@@ -61,6 +78,7 @@ export function LessonDialog({
     canUnschedule,
     isBookmarked,
     handleToggleBookmark,
+    refetchFeedback,
   } = useLessonDialog({
     isOpen,
     initialData,
@@ -70,6 +88,23 @@ export function LessonDialog({
     employeeName,
     onSave,
   });
+
+  // Scroll to top when feedback is updated after refetch
+  const prevFeedbackLoadingRef = React.useRef(feedbackState.isLoading);
+  React.useEffect(() => {
+    // If feedback was loading and now it's not, scroll to top
+    if (prevFeedbackLoadingRef.current && !feedbackState.isLoading) {
+      // Use setTimeout to ensure DOM is updated after React re-render
+      setTimeout(() => {
+        // Find the viewport element and scroll to top
+        const viewport = scrollAreaRef.current?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement;
+        if (viewport) {
+          viewport.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 100);
+    }
+    prevFeedbackLoadingRef.current = feedbackState.isLoading;
+  }, [feedbackState.isLoading]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -82,7 +117,8 @@ export function LessonDialog({
           <DialogDescription>Điền thông tin tiết học cho khung giờ này.</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 px-5">
+        <div ref={scrollAreaRef} className="flex-1 min-h-0">
+          <ScrollArea className="h-full px-5">
           <div className="space-y-6 pb-6">
             <FeedbackSection
               shouldShow={shouldShowFeedback}
@@ -173,24 +209,44 @@ export function LessonDialog({
                 >
                   <BookmarkIcon className="h-4 w-4" fill={isBookmarked ? "currentColor" : "none"} />
                 </Button>
-                {canUnschedule && (
+                {isApproved ? (
                   <Button
                     type="button"
-                    variant="outline"
-                    onClick={handleUnschedule}
-                    disabled={isUnscheduling || isSaving}
+                    onClick={() => setIsRecordDialogOpen(true)}
                   >
-                    {isUnscheduling ? "Đang xóa..." : "Hủy lịch"}
+                    Sổ ghi đầu bài
                   </Button>
+                ) : (
+                  <>
+                    {canUnschedule && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleUnschedule}
+                        disabled={isUnscheduling || isSaving}
+                      >
+                        {isUnscheduling ? "Đang xóa..." : "Hủy lịch"}
+                      </Button>
+                    )}
+                    <Button type="submit" disabled={isSaving || isUnscheduling}>
+                      {isSaving ? "Đang lưu..." : "Lưu"}
+                    </Button>
+                  </>
                 )}
-                <Button type="submit" disabled={isSaving || isUnscheduling}>
-                  {isSaving ? "Đang lưu..." : "Lưu"}
-                </Button>
               </DialogFooter>
             </form>
           </div>
         </ScrollArea>
+        </div>
       </DialogContent>
+
+      <LectureRecordDialog
+        isOpen={isRecordDialogOpen}
+        onClose={() => setIsRecordDialogOpen(false)}
+        onSave={() => {
+          refetchFeedback();
+        }}
+      />
     </Dialog>
   );
 }
