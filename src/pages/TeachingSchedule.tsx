@@ -15,7 +15,7 @@ import {
   type ApprovalHistoryItem,
 } from "@/lib/api";
 import { CalendarIcon, Filter, RefreshCw } from "lucide-react";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { vi } from "date-fns/locale";
 import { toast } from "sonner";
@@ -181,15 +181,14 @@ export default function TeachingSchedule() {
   }, [schoolYear]);
 
   // Check if the latest approval is true
-  const isApproved =
-    approvalHistory && approvalHistory.length > 0
-      ? (() => {
-          const sorted = [...approvalHistory].sort(
-            (a, b) => new Date(b.approveDate).getTime() - new Date(a.approveDate).getTime()
-          );
-          return sorted[0]?.isApprove === true;
-        })()
-      : false;
+  const isApproved = useMemo(() => {
+    if (!approvalHistory || approvalHistory.length === 0) return false;
+    // Sort by approveDate descending to get the latest
+    const sorted = [...approvalHistory].sort(
+      (a, b) => new Date(b.approveDate).getTime() - new Date(a.approveDate).getTime()
+    );
+    return sorted[0]?.isApprove === true;
+  }, [approvalHistory]);
 
   const getCellKey = (day: string, session: string, period: number) => {
     return `${day}-${session}-${period}`;
@@ -288,6 +287,8 @@ export default function TeachingSchedule() {
     const loadSchedule = async () => {
       setIsLoadingSchedule(true);
       setScheduleError(null);
+      // Clear approval history when week changes - will be fetched for the new week
+      setApprovalHistory([]);
 
       try {
         // Get Monday and Sunday of current week
@@ -308,7 +309,7 @@ export default function TeachingSchedule() {
           setTeachingScheduleId(response.id);
           setEmployeeName(response.employeeName);
 
-          // Fetch approval history
+          // Fetch approval history for this week's schedule
           try {
             const history = await fetchApprovalHistory(response.id);
             setApprovalHistory(history);
@@ -319,6 +320,7 @@ export default function TeachingSchedule() {
         } else {
           setTeachingScheduleId(null);
           setEmployeeName(null);
+          // No schedule for this week, so no approval history
           setApprovalHistory([]);
         }
 
