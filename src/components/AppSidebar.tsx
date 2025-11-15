@@ -10,7 +10,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { clearStoredTokens } from "@/lib/auth";
-import { Calendar, LogOut, User } from "lucide-react";
+import { Bell, Calendar, LogOut, User } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const menuItems: {
@@ -26,8 +26,13 @@ const menuItems: {
   },
   {
     icon: <User />,
-    label: "Cá nhân",
-    href: "/profile",
+    label: "Tài khoản",
+    href: "/account",
+  },
+  {
+    icon: <Bell />,
+    label: "Thông báo",
+    href: "/notifications",
   },
   {
     icon: <LogOut />,
@@ -41,10 +46,7 @@ const menuItems: {
 
 export function AppSidebar() {
   return (
-    <Sidebar
-      collapsible="none"
-      className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r h-screen"
-    >
+    <Sidebar collapsible="none" className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r h-screen">
       <SidebarHeader>
         <SidebarTrigger className="px-4" />
       </SidebarHeader>
