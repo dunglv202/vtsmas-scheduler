@@ -88,6 +88,41 @@ export async function fetchSchoolYears(): Promise<SchoolYear[]> {
   return JSON.parse(responseText) as SchoolYear[];
 }
 
+export interface SchoolYearDateRange {
+  minDate: string;
+  maxDate: string;
+}
+
+export async function fetchSchoolYearDateRange(schoolYearId: string): Promise<SchoolYearDateRange> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  const url = `https://gateway.vtsmas.vn/api/can-bo/cau-hinh-tuan/ngay-lon-nho-trong-nam/${schoolYearId}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${tokens.access_token}`,
+      "Accept-Language": "vi",
+      Accept: "application/json, text/plain, */*",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch school year date range: ${response.status} ${response.statusText}. ${errorText}`);
+  }
+
+  const responseText = await response.text();
+  if (!responseText.trim()) {
+    throw new Error("Empty response from school year date range API");
+  }
+
+  return JSON.parse(responseText) as SchoolYearDateRange;
+}
+
 export interface SubjectItem {
   cateCodeType: string;
   cateCode: string;

@@ -1,6 +1,6 @@
 import { LessonDialog, type LessonInfo, type ScheduleCell } from "@/components/LessonDialog";
+import { WeekNumberCalendar } from "@/components/WeekNumberCalendar";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
@@ -14,10 +14,9 @@ import {
   type TeachingScheduleDetail,
   type ApprovalHistoryItem,
 } from "@/lib/api";
-import { CalendarIcon, Filter, RefreshCw } from "lucide-react";
+import { Filter, RefreshCw } from "lucide-react";
 import { Fragment, useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { vi } from "date-fns/locale";
 import { toast } from "sonner";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -81,7 +80,7 @@ function isSameDay(date1: Date, date2: Date): boolean {
   );
 }
 
-// Format week range for display (e.g., "Jan 1 - Jan 7, 2024")
+// Format week range for display (e.g., "1-7 Thg 9, 2025" or "28 Thg 8 - 3 Thg 9, 2025")
 function formatWeekRange(weekDates: Date[]): string {
   const monday = weekDates[0];
   const sunday = weekDates[6];
@@ -100,6 +99,12 @@ function formatWeekRange(weekDates: Date[]): string {
     "Thg 12",
   ];
 
+  // If both dates are in the same month, use compact format: "1-7 Thg 9, 2025"
+  if (monday.getMonth() === sunday.getMonth() && monday.getFullYear() === sunday.getFullYear()) {
+    return `${monday.getDate()}-${sunday.getDate()} ${months[sunday.getMonth()]}, ${sunday.getFullYear()}`;
+  }
+
+  // Otherwise, use full format: "28 Thg 8 - 3 Thg 9, 2025"
   const mondayStr = `${monday.getDate()} ${months[monday.getMonth()]}`;
   const sundayStr = `${sunday.getDate()} ${months[sunday.getMonth()]}, ${sunday.getFullYear()}`;
 
@@ -492,26 +497,15 @@ export default function TeachingSchedule() {
           </Button>
 
           <div className="flex items-center gap-2">
-            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formatWeekRange(weekDates)}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={weekDates[0]}
-                  onSelect={handleDateSelect}
-                  month={calendarMonth}
-                  onMonthChange={setCalendarMonth}
-                  weekStartsOn={1}
-                  locale={vi}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <WeekNumberCalendar
+              selectedDate={weekDates[0]}
+              onDateSelect={handleDateSelect}
+              month={calendarMonth}
+              onMonthChange={setCalendarMonth}
+              isOpen={isCalendarOpen}
+              onOpenChange={setIsCalendarOpen}
+              triggerLabel={formatWeekRange(weekDates)}
+            />
           </div>
 
           <Button onClick={handleNextWeek} variant="outline" aria-label="Tuần sau">
