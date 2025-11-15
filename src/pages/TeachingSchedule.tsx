@@ -1,47 +1,19 @@
-import {
-  LessonDialog,
-  type LessonInfo,
-  type ScheduleCell,
-} from "@/components/LessonDialog";
+import { LessonDialog, type LessonInfo, type ScheduleCell } from "@/components/LessonDialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { useEmployee } from "@/contexts/EmployeeContext";
-import {
-  fetchClasses,
-  fetchTeachingSchedule,
-  type ClassItem,
-  type TeachingScheduleDetail,
-} from "@/lib/api";
+import { fetchClasses, fetchTeachingSchedule, type ClassItem, type TeachingScheduleDetail } from "@/lib/api";
 import { CalendarIcon, Filter, RefreshCw } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { vi } from "date-fns/locale";
 
-const DAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
-const DAY_ABBREVIATIONS = [
-  "Th 2",
-  "Th 3",
-  "Th 4",
-  "Th 5",
-  "Th 6",
-  "Th 7",
-  "CN",
-];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_ABBREVIATIONS = ["Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7", "CN"];
 const SESSIONS = ["Morning", "Afternoon", "Evening"];
 const SESSION_LABELS: Record<string, string> = {
   Morning: "Buổi sáng",
@@ -121,9 +93,7 @@ function formatWeekRange(weekDates: Date[]): string {
   ];
 
   const mondayStr = `${monday.getDate()} ${months[monday.getMonth()]}`;
-  const sundayStr = `${sunday.getDate()} ${
-    months[sunday.getMonth()]
-  }, ${sunday.getFullYear()}`;
+  const sundayStr = `${sunday.getDate()} ${months[sunday.getMonth()]}, ${sunday.getFullYear()}`;
 
   return `${mondayStr} - ${sundayStr}`;
 }
@@ -139,15 +109,7 @@ function formatDateForAPI(date: Date): string {
 // Get day name from date (Monday, Tuesday, etc.)
 function getDayNameFromDate(date: Date): string {
   const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  const dayNames = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   return dayNames[dayOfWeek];
 }
 
@@ -174,14 +136,10 @@ export default function TeachingSchedule() {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [selectedClasses, setSelectedClasses] = useState<Set<string>>(
-    new Set()
-  );
+  const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
-  const [teachingScheduleId, setTeachingScheduleId] = useState<string | null>(
-    null
-  );
+  const [teachingScheduleId, setTeachingScheduleId] = useState<string | null>(null);
   const [employeeName, setEmployeeName] = useState<string | null>(null);
   const [refreshCounter, setRefreshCounter] = useState(0);
 
@@ -235,11 +193,7 @@ export default function TeachingSchedule() {
     return `${day}-${session}-${period}`;
   };
 
-  const getCellLesson = (
-    day: string,
-    session: string,
-    period: number
-  ): LessonInfo | undefined => {
+  const getCellLesson = (day: string, session: string, period: number): LessonInfo | undefined => {
     const lesson = schedule[getCellKey(day, session, period)];
     // Filter by selected classes
     if (selectedClasses.size > 0 && lesson) {
@@ -319,13 +273,7 @@ export default function TeachingSchedule() {
         const schoolYearId = schoolYear.schoolYearId;
         const schoolLevelCode = "03"; // TODO: Get from user context or API
 
-        const response = await fetchTeachingSchedule(
-          fromDate,
-          toDate,
-          employeeId,
-          schoolYearId,
-          schoolLevelCode
-        );
+        const response = await fetchTeachingSchedule(fromDate, toDate, employeeId, schoolYearId, schoolLevelCode);
 
         if (response) {
           setTeachingScheduleId(response.id);
@@ -339,66 +287,53 @@ export default function TeachingSchedule() {
         const scheduleMap: Record<string, LessonInfo> = {};
 
         if (response) {
-          response.teachingScheduleDetailDtos.forEach(
-            (detail: TeachingScheduleDetail) => {
-              // Get day name from dateStudy
-              const dateStudy = new Date(detail.dateStudy);
-              const dayName = getDayNameFromDate(dateStudy);
+          response.teachingScheduleDetailDtos.forEach((detail: TeachingScheduleDetail) => {
+            // Get day name from dateStudy
+            const dateStudy = new Date(detail.dateStudy);
+            const dayName = getDayNameFromDate(dateStudy);
 
-              // Get session name from section (0=Morning, 1=Afternoon, 2=Evening)
-              const sessionName = getSessionNameFromSection(detail.section);
+            // Get session name from section (0=Morning, 1=Afternoon, 2=Evening)
+            const sessionName = getSessionNameFromSection(detail.section);
 
-              // Get period number
-              const period = detail.period;
+            // Get period number
+            const period = detail.period;
 
-              // Create cell key
-              const key = getCellKey(dayName, sessionName, period);
+            // Create cell key
+            const key = getCellKey(dayName, sessionName, period);
 
-              // Map to LessonInfo
-              const statusLectureType =
-                typeof detail.status === "number"
-                  ? STATUS_TO_LECTURE_TYPE[detail.status]
-                  : undefined;
-              const toolTypeLabel =
-                typeof detail.toolType === "number"
-                  ? TOOL_TYPE_TO_LABEL[detail.toolType]
-                  : undefined;
-              const toolNameValue =
-                detail.toolName !== undefined && detail.toolName !== null
-                  ? String(detail.toolName).trim()
-                  : "";
-              const totalToolValue =
-                detail.totalTool !== undefined && detail.totalTool !== null
-                  ? String(detail.totalTool).trim()
-                  : "";
-              const equipment =
-                detail.isRegisterLearningTool &&
-                (toolNameValue || totalToolValue || toolTypeLabel)
-                  ? {
-                      name: toolNameValue || undefined,
-                      quantity: totalToolValue || undefined,
-                      type: toolTypeLabel,
-                    }
-                  : undefined;
+            // Map to LessonInfo
+            const statusLectureType =
+              typeof detail.status === "number" ? STATUS_TO_LECTURE_TYPE[detail.status] : undefined;
+            const toolTypeLabel = typeof detail.toolType === "number" ? TOOL_TYPE_TO_LABEL[detail.toolType] : undefined;
+            const toolNameValue =
+              detail.toolName !== undefined && detail.toolName !== null ? String(detail.toolName).trim() : "";
+            const totalToolValue =
+              detail.totalTool !== undefined && detail.totalTool !== null ? String(detail.totalTool).trim() : "";
+            const equipment =
+              detail.isRegisterLearningTool && (toolNameValue || totalToolValue || toolTypeLabel)
+                ? {
+                    name: toolNameValue || undefined,
+                    quantity: totalToolValue || undefined,
+                    type: toolTypeLabel,
+                  }
+                : undefined;
 
-              scheduleMap[key] = {
-                lesson:
-                  detail.distributeProgramName || detail.subjectName || "",
-                lessonId: detail.distributeProgramId,
-                class: detail.className || "",
-                classId: detail.classId,
-                description: detail.description || "",
-                subject: detail.subjectName || "",
-                subjectCode: detail.subjectCode || "",
-                lessonPeriod: detail.distributeProgramPeriod,
-                gradeCode: detail.gradeCode,
-                gradeName: detail.gradeName,
-                lectureType: statusLectureType,
-                equipment,
-                scheduleDetailId: detail.id,
-              };
-            }
-          );
+            scheduleMap[key] = {
+              lesson: detail.distributeProgramName || detail.subjectName || "",
+              lessonId: detail.distributeProgramId,
+              class: detail.className || "",
+              classId: detail.classId,
+              description: detail.description || "",
+              subject: detail.subjectName || "",
+              subjectCode: detail.subjectCode || "",
+              lessonPeriod: detail.distributeProgramPeriod,
+              gradeCode: detail.gradeCode,
+              gradeName: detail.gradeName,
+              lectureType: statusLectureType,
+              equipment,
+              scheduleDetailId: detail.id,
+            };
+          });
         }
 
         setSchedule(scheduleMap);
@@ -407,9 +342,7 @@ export default function TeachingSchedule() {
         setTeachingScheduleId(null);
         setEmployeeName(null);
         setScheduleError(
-          error instanceof Error
-            ? `Không thể tải thời khóa biểu: ${error.message}`
-            : "Không thể tải thời khóa biểu"
+          error instanceof Error ? `Không thể tải thời khóa biểu: ${error.message}` : "Không thể tải thời khóa biểu"
         );
       } finally {
         setIsLoadingSchedule(false);
@@ -430,19 +363,14 @@ export default function TeachingSchedule() {
   return (
     <div className="w-full">
       <div className="p-4 mb-4">
-        <h1 className="text-3xl font-bold text-center mb-4">
-          Thời khóa biểu giảng dạy
-        </h1>
+        <h1 className="text-3xl font-bold text-center mb-4">Thời khóa biểu giảng dạy</h1>
 
         {/* Filters and Week Selector */}
         <div className="flex items-center justify-center gap-4">
           {/* Class Filter */}
           <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="gap-2 w-40 justify-center relative"
-              >
+              <Button variant="outline" className="gap-2 w-40 justify-center relative">
                 <Filter className="h-4 w-4 shrink-0" />
                 <span className="truncate">Lọc theo lớp</span>
                 {selectedClasses.size > 0 && (
@@ -457,34 +385,23 @@ export default function TeachingSchedule() {
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold text-sm">Lọc theo lớp</h4>
                   {selectedClasses.size > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearClassFilter}
-                      className="h-7 text-xs"
-                    >
+                    <Button variant="ghost" size="sm" onClick={clearClassFilter} className="h-7 text-xs">
                       Xóa
                     </Button>
                   )}
                 </div>
                 {isLoadingClasses ? (
-                  <div className="text-sm text-muted-foreground py-2">
-                    Đang tải danh sách lớp...
-                  </div>
+                  <div className="text-sm text-muted-foreground py-2">Đang tải danh sách lớp...</div>
                 ) : (
                   <ScrollArea className="h-64">
                     <div className="space-y-1 pr-4">
                       {classes.map((classItem) => {
-                        const isSelected = selectedClasses.has(
-                          classItem.className
-                        );
+                        const isSelected = selectedClasses.has(classItem.className);
                         return (
                           <button
                             key={classItem.id}
                             type="button"
-                            onClick={() =>
-                              toggleClassFilter(classItem.className)
-                            }
+                            onClick={() => toggleClassFilter(classItem.className)}
                             className={`
                             w-full text-left px-3 py-2 rounded-md text-sm transition-colors
                             ${
@@ -498,11 +415,7 @@ export default function TeachingSchedule() {
                               <div
                                 className={`
                                 w-4 h-4 border-2 rounded flex items-center justify-center
-                                ${
-                                  isSelected
-                                    ? "bg-primary border-primary"
-                                    : "border-border"
-                                }
+                                ${isSelected ? "bg-primary border-primary" : "border-border"}
                               `}
                               >
                                 {isSelected && (
@@ -532,21 +445,14 @@ export default function TeachingSchedule() {
           </Popover>
 
           {/* Week Selector */}
-          <Button
-            onClick={handlePreviousWeek}
-            variant="outline"
-            aria-label="Tuần trước"
-          >
+          <Button onClick={handlePreviousWeek} variant="outline" aria-label="Tuần trước">
             ← Tuần trước
           </Button>
 
           <div className="flex items-center gap-2">
             <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-[280px] justify-start text-left font-normal"
-                >
+                <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {formatWeekRange(weekDates)}
                 </Button>
@@ -558,17 +464,15 @@ export default function TeachingSchedule() {
                   onSelect={handleDateSelect}
                   month={calendarMonth}
                   onMonthChange={setCalendarMonth}
+                  weekStartsOn={1}
+                  locale={vi}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
           </div>
 
-          <Button
-            onClick={handleNextWeek}
-            variant="outline"
-            aria-label="Tuần sau"
-          >
+          <Button onClick={handleNextWeek} variant="outline" aria-label="Tuần sau">
             Tuần sau →
           </Button>
 
@@ -576,20 +480,12 @@ export default function TeachingSchedule() {
             Hôm nay
           </Button>
 
-          <Button
-            onClick={handleReload}
-            variant="outline"
-            aria-label="Tải lại thời khóa biểu"
-          >
+          <Button onClick={handleReload} variant="outline" aria-label="Tải lại thời khóa biểu">
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
 
-        {scheduleError && (
-          <div className="text-center text-sm text-destructive mt-2">
-            Lỗi: {scheduleError}
-          </div>
-        )}
+        {scheduleError && <div className="text-center text-sm text-destructive mt-2">Lỗi: {scheduleError}</div>}
       </div>
 
       <div className="grid grid-cols-8 w-full">
@@ -608,11 +504,7 @@ export default function TeachingSchedule() {
               )}
             >
               <div className="text-sm">{DAY_ABBREVIATIONS[index]}</div>
-              <div
-                className={`text-xs mt-1 ${
-                  isToday ? "text-primary-foreground" : "text-muted-foreground"
-                }`}
-              >
+              <div className={`text-xs mt-1 ${isToday ? "text-primary-foreground" : "text-muted-foreground"}`}>
                 {formatDate(date)}
               </div>
             </div>
@@ -622,9 +514,7 @@ export default function TeachingSchedule() {
         {isLoadingSchedule ? (
           <div className="col-span-8 flex items-center justify-center py-6">
             <Spinner className="mr-3" />
-            <span className="text-sm text-muted-foreground">
-              Đang tải thời khóa biểu...
-            </span>
+            <span className="text-sm text-muted-foreground">Đang tải thời khóa biểu...</span>
           </div>
         ) : (
           <>
@@ -634,13 +524,9 @@ export default function TeachingSchedule() {
                 {/* Row label (first column) */}
                 <div className="bg-card p-2 text-sm text-center border-r border-b border-border font-medium sticky left-0 z-5">
                   {row.period === 1 && (
-                    <div className="font-semibold text-foreground">
-                      {SESSION_LABELS[row.session] ?? row.session}
-                    </div>
+                    <div className="font-semibold text-foreground">{SESSION_LABELS[row.session] ?? row.session}</div>
                   )}
-                  <div className="text-xs text-muted-foreground">
-                    Tiết {row.period}
-                  </div>
+                  <div className="text-xs text-muted-foreground">Tiết {row.period}</div>
                 </div>
 
                 {/* Day cells */}
@@ -649,9 +535,7 @@ export default function TeachingSchedule() {
                   return (
                     <div
                       key={`${day}-${rowIndex}`}
-                      onClick={() =>
-                        handleCellClick(day, row.session, row.period)
-                      }
+                      onClick={() => handleCellClick(day, row.session, row.period)}
                       className={`
                       p-2 h-24 border-r border-b border-border cursor-pointer
                       hover:bg-accent transition-colors
@@ -661,23 +545,14 @@ export default function TeachingSchedule() {
                     >
                       {lesson && (
                         <div className="text-xs space-y-1">
-                          {lesson.subject && (
-                            <div className="font-medium text-foreground">
-                              {lesson.subject}
-                            </div>
-                          )}
+                          {lesson.subject && <div className="font-medium text-foreground">{lesson.subject}</div>}
                           {lesson.lesson && (
                             <div className="font-semibold text-foreground line-clamp-2">
-                              {lesson.lessonPeriod !== undefined &&
-                                `Tiết ${lesson.lessonPeriod} - `}
+                              {lesson.lessonPeriod !== undefined && `Tiết ${lesson.lessonPeriod} - `}
                               {lesson.lesson}
                             </div>
                           )}
-                          {lesson.class && (
-                            <div className="text-muted-foreground">
-                              Lớp: {lesson.class}
-                            </div>
-                          )}
+                          {lesson.class && <div className="text-muted-foreground">Lớp: {lesson.class}</div>}
                         </div>
                       )}
                     </div>
@@ -698,13 +573,7 @@ export default function TeachingSchedule() {
         }}
         onSave={handleSaveLesson}
         initialData={
-          selectedCell
-            ? getCellLesson(
-                selectedCell.day,
-                selectedCell.session,
-                selectedCell.period
-              )
-            : undefined
+          selectedCell ? getCellLesson(selectedCell.day, selectedCell.session, selectedCell.period) : undefined
         }
         cellInfo={selectedCell}
         weekDates={weekDates}
