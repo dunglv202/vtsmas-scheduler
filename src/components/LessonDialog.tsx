@@ -243,7 +243,16 @@ export function LessonDialog({
                           {isUnscheduling ? "Đang xóa..." : "Hủy lịch"}
                         </Button>
                       )}
-                      <Button type="submit" disabled={isSaving || isUnscheduling}>
+                      <Button
+                        type="submit"
+                        disabled={
+                          isSaving ||
+                          isUnscheduling ||
+                          (lessonState.lessons.length > 0
+                            ? !lessonState.selectedLessonId
+                            : !lessonState.manualPeriod.trim())
+                        }
+                      >
                         {isSaving ? "Đang lưu..." : "Lưu"}
                       </Button>
                     </>
