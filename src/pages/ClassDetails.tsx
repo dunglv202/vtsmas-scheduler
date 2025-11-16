@@ -1,14 +1,16 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
+import { Separator } from "@/components/ui/separator";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { useEmployee } from "@/contexts/EmployeeContext";
 import {
   fetchClasses,
   fetchStudentsByClass,
   fetchTeachingSchedule,
+  fetchSchoolYearDateRange,
   type ClassItem,
   type StudentItem,
-  type TeachingScheduleResponse,
+  type SchoolYearDateRange,
 } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -23,11 +25,57 @@ export default function ClassDetails() {
   const { employee } = useEmployee();
   const [classItem, setClassItem] = useState<ClassItem | null>(null);
   const [students, setStudents] = useState<StudentItem[]>([]);
-  const [teachingHistory, setTeachingHistory] = useState<TeachingScheduleResponse[]>([]);
+  const [teachingHistory, setTeachingHistory] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("details");
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isLoadingMoreWeeks, setIsLoadingMoreWeeks] = useState(false);
+  const [earliestWeekMonday, setEarliestWeekMonday] = useState<Date | null>(null);
+  const [hasMoreWeeks, setHasMoreWeeks] = useState(true);
+  const [schoolYearDateRange, setSchoolYearDateRange] = useState<SchoolYearDateRange | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch school year date range for week number calculation
+  useEffect(() => {
+    if (!schoolYear) return;
+
+    const loadDateRange = async () => {
+      try {
+        const dateRange = await fetchSchoolYearDateRange(schoolYear.schoolYearId);
+        setSchoolYearDateRange(dateRange);
+      } catch (error) {
+        console.error("Failed to fetch school year date range:", error);
+      }
+    };
+    loadDateRange();
+  }, [schoolYear]);
+
+  // Calculate week number based on school year start date
+  const calculateWeekNumber = (date: Date, minDate: Date): number | null => {
+    const minDateDayOfWeek = minDate.getDay();
+    const mondayOffset = minDateDayOfWeek === 0 ? -6 : 1 - minDateDayOfWeek;
+    const schoolYearStartMonday = new Date(minDate);
+    schoolYearStartMonday.setDate(minDate.getDate() + mondayOffset);
+    schoolYearStartMonday.setHours(0, 0, 0, 0);
+
+    const dateDayOfWeek = date.getDay();
+    const dateMondayOffset = dateDayOfWeek === 0 ? -6 : 1 - dateDayOfWeek;
+    const dateMonday = new Date(date);
+    dateMonday.setDate(date.getDate() + dateMondayOffset);
+    dateMonday.setHours(0, 0, 0, 0);
+
+    const diffTime = dateMonday.getTime() - schoolYearStartMonday.getTime();
+    const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
+    const weekNum = diffWeeks + 1;
+    return weekNum >= 1 ? weekNum : null;
+  };
+
+  // Get weekday name in Vietnamese
+  const getWeekdayName = (date: Date): string => {
+    const dayNames = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+    return dayNames[date.getDay()];
+  };
 
   // Fetch class details
   useEffect(() => {
@@ -77,58 +125,205 @@ export default function ClassDetails() {
     loadStudents();
   }, [schoolYear, classId]);
 
-  // Fetch teaching history
+  // Fetch teaching history when history tab is active
   useEffect(() => {
-    if (!schoolYear || !employee || !classId) return;
+    // Only fetch when history tab is active
+    if (activeTab !== "history") {
+      return;
+    }
+
+    if (!schoolYear || !employee || !classId) {
+      setIsLoadingHistory(false);
+      return;
+    }
+
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const day = date.getDate().toString().padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    // Get Monday and Sunday for a given date
+    const getWeekDates = (date: Date): { monday: Date; sunday: Date } => {
+      const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(date);
+      monday.setDate(date.getDate() + mondayOffset);
+      monday.setHours(0, 0, 0, 0);
+
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+
+      return { monday, sunday };
+    };
 
     const loadTeachingHistory = async () => {
       setIsLoadingHistory(true);
       try {
-        // Get current date range for the school year
+        // Get current week and previous week (initial load: 2 weeks)
         const now = new Date();
-        const startOfYear = new Date(schoolYear.startDate);
-        const endOfYear = new Date(schoolYear.endDate);
+        const currentWeek = getWeekDates(now);
+        const previousWeekStart = new Date(currentWeek.monday);
+        previousWeekStart.setDate(currentWeek.monday.getDate() - 7);
+        const previousWeek = getWeekDates(previousWeekStart);
 
-        // Fetch teaching schedule for the entire school year
-        const fromDate = startOfYear < now ? startOfYear : now;
-        const toDate = endOfYear > now ? now : endOfYear;
+        console.log("Fetching teaching history for 2 weeks:", {
+          week1: { from: formatDate(currentWeek.monday), to: formatDate(currentWeek.sunday) },
+          week2: { from: formatDate(previousWeek.monday), to: formatDate(previousWeek.sunday) },
+          employeeId: employee.employeeId,
+          classId,
+        });
 
-        const formatDate = (date: Date): string => {
-          const year = date.getFullYear();
-          const month = (date.getMonth() + 1).toString().padStart(2, "0");
-          const day = date.getDate().toString().padStart(2, "0");
-          return `${year}-${month}-${day}`;
-        };
+        // Fetch both weeks in parallel
+        const [week1Response, week2Response] = await Promise.all([
+          fetchTeachingSchedule(
+            formatDate(currentWeek.monday),
+            formatDate(currentWeek.sunday),
+            employee.employeeId,
+            schoolYear.schoolYearId,
+            "03"
+          ),
+          fetchTeachingSchedule(
+            formatDate(previousWeek.monday),
+            formatDate(previousWeek.sunday),
+            employee.employeeId,
+            schoolYear.schoolYearId,
+            "03"
+          ),
+        ]);
 
-        const response = await fetchTeachingSchedule(
-          formatDate(fromDate),
-          formatDate(toDate),
-          employee.employeeId,
-          schoolYear.schoolYearId,
-          "03"
-        );
+        console.log("Teaching schedule responses:", { week1: week1Response, week2: week2Response });
 
-        if (response) {
-          // Filter to only include lessons for this class
-          const classLessons = response.teachingScheduleDetailDtos.filter((detail) => detail.classId === classId);
-          if (classLessons.length > 0) {
-            setTeachingHistory([response]);
-          } else {
-            setTeachingHistory([]);
-          }
-        } else {
-          setTeachingHistory([]);
+        // Combine and filter lessons from both weeks
+        const allLessons: any[] = [];
+
+        if (week1Response && week1Response.teachingScheduleDetailDtos) {
+          week1Response.teachingScheduleDetailDtos
+            .filter((detail) => detail.classId === classId)
+            .forEach((detail) => {
+              allLessons.push({
+                ...detail,
+                scheduleId: week1Response.id,
+                dateFrom: week1Response.dateFrom,
+                dateTo: week1Response.dateTo,
+              });
+            });
         }
+
+        if (week2Response && week2Response.teachingScheduleDetailDtos) {
+          week2Response.teachingScheduleDetailDtos
+            .filter((detail) => detail.classId === classId)
+            .forEach((detail) => {
+              allLessons.push({
+                ...detail,
+                scheduleId: week2Response.id,
+                dateFrom: week2Response.dateFrom,
+                dateTo: week2Response.dateTo,
+              });
+            });
+        }
+
+        // Sort by dateStudy descending (latest first)
+        allLessons.sort((a, b) => {
+          const dateA = new Date(a.dateStudy).getTime();
+          const dateB = new Date(b.dateStudy).getTime();
+          return dateB - dateA;
+        });
+
+        console.log("Teaching history loaded:", allLessons.length, "lessons for class", classId);
+        setTeachingHistory(allLessons);
+        setEarliestWeekMonday(previousWeek.monday); // Track the earliest week loaded
+        setHasMoreWeeks(true); // Assume there might be more weeks
       } catch (err) {
         console.error("Failed to fetch teaching history:", err);
         setTeachingHistory([]);
+        setHasMoreWeeks(false);
       } finally {
         setIsLoadingHistory(false);
       }
     };
 
     loadTeachingHistory();
-  }, [schoolYear, employee, classId]);
+  }, [schoolYear, employee, classId, activeTab]);
+
+  // Load more weeks handler
+  const handleLoadMoreWeeks = async () => {
+    if (!schoolYear || !employee || !classId || !earliestWeekMonday || !hasMoreWeeks) return;
+
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const day = date.getDate().toString().padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    const getWeekDates = (date: Date): { monday: Date; sunday: Date } => {
+      const dayOfWeek = date.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(date);
+      monday.setDate(date.getDate() + mondayOffset);
+      monday.setHours(0, 0, 0, 0);
+
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+
+      return { monday, sunday };
+    };
+
+    setIsLoadingMoreWeeks(true);
+    try {
+      const previousWeekStart = new Date(earliestWeekMonday);
+      previousWeekStart.setDate(earliestWeekMonday.getDate() - 7);
+      const previousWeek = getWeekDates(previousWeekStart);
+
+      console.log("Loading more weeks:", {
+        from: formatDate(previousWeek.monday),
+        to: formatDate(previousWeek.sunday),
+      });
+
+      const response = await fetchTeachingSchedule(
+        formatDate(previousWeek.monday),
+        formatDate(previousWeek.sunday),
+        employee.employeeId,
+        schoolYear.schoolYearId,
+        "03"
+      );
+
+      if (response && response.teachingScheduleDetailDtos && response.teachingScheduleDetailDtos.length > 0) {
+        const newLessons = response.teachingScheduleDetailDtos
+          .filter((detail) => detail.classId === classId)
+          .map((detail) => ({
+            ...detail,
+            scheduleId: response.id,
+            dateFrom: response.dateFrom,
+            dateTo: response.dateTo,
+          }));
+
+        if (newLessons.length > 0) {
+          setTeachingHistory((prev) => {
+            const combined = [...prev, ...newLessons];
+            combined.sort((a, b) => {
+              const dateA = new Date(a.dateStudy).getTime();
+              const dateB = new Date(b.dateStudy).getTime();
+              return dateB - dateA;
+            });
+            return combined;
+          });
+        }
+        setEarliestWeekMonday(previousWeek.monday);
+      } else {
+        setHasMoreWeeks(false);
+      }
+    } catch (err) {
+      console.error("Failed to load more weeks:", err);
+      setHasMoreWeeks(false);
+    } finally {
+      setIsLoadingMoreWeeks(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -177,7 +372,7 @@ export default function ClassDetails() {
         <h1 className="text-3xl font-bold">{classItem.className}</h1>
       </div>
 
-      <Tabs defaultValue="details" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
           <TabsTrigger value="details">Thông tin lớp học</TabsTrigger>
           <TabsTrigger value="history">Lịch dạy của tôi</TabsTrigger>
@@ -266,34 +461,58 @@ export default function ClassDetails() {
                 <span className="text-sm text-muted-foreground">Đang tải lịch sử giảng dạy...</span>
               </div>
             ) : teachingHistory.length > 0 ? (
-              <div className="space-y-4">
-                {teachingHistory.map((schedule) => (
-                  <div key={schedule.id} className="border rounded-lg p-4">
-                    <div className="mb-3">
-                      <p className="font-semibold">
-                        Từ {new Date(schedule.dateFrom).toLocaleDateString("vi-VN")} đến{" "}
-                        {new Date(schedule.dateTo).toLocaleDateString("vi-VN")}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      {schedule.teachingScheduleDetailDtos
-                        .filter((detail) => detail.classId === classId)
-                        .map((detail) => (
-                          <div key={detail.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                            <div>
-                              <p className="font-medium">{detail.subjectName}</p>
-                              <p className="text-muted-foreground">
-                                {new Date(detail.dateStudy).toLocaleDateString("vi-VN")} - Tiết {detail.period}
-                              </p>
-                            </div>
-                            {detail.distributeProgramName && (
-                              <p className="text-muted-foreground">{detail.distributeProgramName}</p>
+              <div className="space-y-0">
+                {teachingHistory.map((detail, index) => {
+                  const dateStudy = new Date(detail.dateStudy);
+                  const weekdayName = getWeekdayName(dateStudy);
+                  const weekNumber =
+                    schoolYearDateRange && calculateWeekNumber(dateStudy, new Date(schoolYearDateRange.minDate));
+
+                  return (
+                    <div key={detail.id}>
+                      {index > 0 && <Separator className="my-3" />}
+                      <div className="py-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium truncate">{detail.subjectName}</p>
+                            {weekNumber && (
+                              <span className="text-muted-foreground text-xs shrink-0">Tuần {weekNumber}</span>
                             )}
                           </div>
-                        ))}
+                          <p className="text-muted-foreground text-xs mb-1">
+                            {weekdayName}, {dateStudy.toLocaleDateString("vi-VN")} - Tiết {detail.period}
+                          </p>
+                          {detail.distributeProgramName && (
+                            <p className="text-muted-foreground line-clamp-2">
+                              {detail.distributeProgramName.length > 64
+                                ? `${detail.distributeProgramName.substring(0, 64)}...`
+                                : detail.distributeProgramName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
+                  );
+                })}
+                {hasMoreWeeks && (
+                  <div className="flex justify-center mt-4">
+                    <Button
+                      onClick={handleLoadMoreWeeks}
+                      variant="outline"
+                      className="w-full"
+                      disabled={isLoadingMoreWeeks}
+                    >
+                      {isLoadingMoreWeeks ? (
+                        <>
+                          <Spinner className="mr-2 h-4 w-4" />
+                          Đang tải...
+                        </>
+                      ) : (
+                        "Tải thêm tuần"
+                      )}
+                    </Button>
                   </div>
-                ))}
+                )}
               </div>
             ) : (
               <p className="text-muted-foreground">Chưa có lịch sử giảng dạy</p>
