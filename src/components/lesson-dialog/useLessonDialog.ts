@@ -300,6 +300,9 @@ export function useLessonDialog({
   useEffect(() => {
     if (isOpen) {
       const template = loadLectureTemplate();
+      console.log("template", template);
+      console.log("selectedSubjectCode", selectedSubjectCode);
+      console.log(lectureType, equipmentName, equipmentQuantity, equipmentType);
       if (template && template.subjectCode) {
         const normalize = (value?: string) => (value || "").toLowerCase().trim();
         const matches =
