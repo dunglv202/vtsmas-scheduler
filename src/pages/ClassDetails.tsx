@@ -2,7 +2,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { useEmployee } from "@/contexts/EmployeeContext";
-import { fetchClasses, fetchStudentsByClass, fetchTeachingSchedule, type ClassItem, type StudentItem, type TeachingScheduleResponse } from "@/lib/api";
+import {
+  fetchClasses,
+  fetchStudentsByClass,
+  fetchTeachingSchedule,
+  type ClassItem,
+  type StudentItem,
+  type TeachingScheduleResponse,
+} from "@/lib/api";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,7 +24,7 @@ export default function ClassDetails() {
   const [classItem, setClassItem] = useState<ClassItem | null>(null);
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [teachingHistory, setTeachingHistory] = useState<TeachingScheduleResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,9 +110,7 @@ export default function ClassDetails() {
 
         if (response) {
           // Filter to only include lessons for this class
-          const classLessons = response.teachingScheduleDetailDtos.filter(
-            (detail) => detail.classId === classId
-          );
+          const classLessons = response.teachingScheduleDetailDtos.filter((detail) => detail.classId === classId);
           if (classLessons.length > 0) {
             setTeachingHistory([response]);
           } else {
@@ -134,11 +139,25 @@ export default function ClassDetails() {
     );
   }
 
-  if (error || !classItem) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <p className="text-destructive mb-4">{error || "Không tìm thấy lớp học"}</p>
+          <p className="text-destructive mb-4">{error}</p>
+          <Button onClick={() => navigate("/classes")} variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Quay lại danh sách lớp
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!classItem) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-destructive mb-4">Không tìm thấy lớp học</p>
           <Button onClick={() => navigate("/classes")} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Quay lại danh sách lớp
@@ -161,7 +180,7 @@ export default function ClassDetails() {
       <Tabs defaultValue="details" className="w-full">
         <TabsList>
           <TabsTrigger value="details">Thông tin lớp học</TabsTrigger>
-          <TabsTrigger value="history">Lịch sử giảng dạy của tôi</TabsTrigger>
+          <TabsTrigger value="history">Lịch dạy của tôi</TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="mt-6">
@@ -197,7 +216,8 @@ export default function ClassDetails() {
 
               <div className="mt-6">
                 <h3 className="text-base font-semibold mb-4">
-                  Danh sách học sinh {!isLoadingStudents && <span className="text-muted-foreground">({students.length})</span>}
+                  Danh sách học sinh{" "}
+                  {!isLoadingStudents && <span className="text-muted-foreground">({students.length})</span>}
                 </h3>
                 {isLoadingStudents ? (
                   <div className="flex items-center justify-center py-8">
@@ -207,7 +227,10 @@ export default function ClassDetails() {
                 ) : students.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {students.map((student) => (
-                      <div key={student.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div
+                        key={student.id}
+                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                      >
                         {student.imageSrc ? (
                           <img
                             src={student.imageSrc}
@@ -221,9 +244,7 @@ export default function ClassDetails() {
                         )}
                         <div>
                           <p className="font-medium">{student.fullName}</p>
-                          {student.studentCode && (
-                            <p className="text-muted-foreground">Mã: {student.studentCode}</p>
-                          )}
+                          {student.studentCode && <p className="text-muted-foreground">Mã: {student.studentCode}</p>}
                         </div>
                       </div>
                     ))}
@@ -283,4 +304,3 @@ export default function ClassDetails() {
     </div>
   );
 }
-
