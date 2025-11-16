@@ -3,6 +3,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { fetchClasses, fetchStudentsByClass, type ClassItem } from "@/lib/api";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 interface ClassWithDetails extends ClassItem {
@@ -15,8 +16,11 @@ interface ClassCardProps {
 }
 
 function ClassCard({ classItem, studentCount }: ClassCardProps) {
+  const navigate = useNavigate();
+
   return (
     <Card
+      onClick={() => navigate(`/classes/${classItem.id}`)}
       className={cn(
         "p-4 cursor-pointer transition-all duration-300",
         "bg-card text-card-foreground",

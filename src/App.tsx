@@ -7,6 +7,7 @@ import { EmployeeProvider } from "./contexts/EmployeeContext";
 import Login from "./pages/Login";
 import TeachingSchedule from "./pages/TeachingSchedule";
 import Classes from "./pages/Classes";
+import ClassDetails from "./pages/ClassDetails";
 import NotFound from "./pages/NotFound";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider } from "./components/ui/sidebar";
@@ -24,6 +25,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="teaching-schedule" element={<TeachingSchedule />} />
               <Route path="classes" element={<Classes />} />
+              <Route path="classes/:classId" element={<ClassDetails />} />
               <Route path="*" element={<NotFound />} />
             </Route>
             <Route path="*" element={<NotFound />} />
