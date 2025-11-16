@@ -301,12 +301,13 @@ export function useLessonDialog({
     if (isOpen) {
       const template = loadLectureTemplate();
       if (template && template.subjectCode) {
+        const normalize = (value?: string) => (value || "").toLowerCase().trim();
         const matches =
-          template.subjectCode === selectedSubjectCode &&
-          template.lectureType === lectureType &&
-          template.equipment.name === equipmentName &&
-          template.equipment.quantity === equipmentQuantity &&
-          template.equipment.type === equipmentType;
+          normalize(template.subjectCode) === normalize(selectedSubjectCode) &&
+          normalize(template.lectureType) === normalize(lectureType) &&
+          normalize(template.equipment.name) === normalize(equipmentName) &&
+          normalize(template.equipment.quantity) === normalize(equipmentQuantity) &&
+          normalize(template.equipment.type) === normalize(equipmentType);
         setIsBookmarked(matches);
       } else {
         setIsBookmarked(false);
