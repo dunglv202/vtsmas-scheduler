@@ -1,8 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
-import { fetchClasses, fetchStudentsByClass, type ClassItem, type StudentItem } from "@/lib/api";
-import { useEffect, useState, useRef } from "react";
+import { fetchClasses, fetchStudentsByClass, type ClassItem } from "@/lib/api";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface ClassWithDetails extends ClassItem {
@@ -11,55 +11,12 @@ interface ClassWithDetails extends ClassItem {
 
 interface ClassCardProps {
   classItem: ClassWithDetails;
-  schoolYearId: string;
   studentCount: number | undefined;
 }
 
-function ClassCard({ classItem, schoolYearId, studentCount }: ClassCardProps) {
-  const [students, setStudents] = useState<StudentItem[]>([]);
-  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!cardRef.current || hasLoaded) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !hasLoaded) {
-            setHasLoaded(true);
-            setIsLoadingStudents(true);
-            fetchStudentsByClass(classItem.id, schoolYearId)
-              .then((studentList) => {
-                setStudents(studentList);
-              })
-              .catch((err) => {
-                console.error(`Failed to fetch students for class ${classItem.id}:`, err);
-              })
-              .finally(() => {
-                setIsLoadingStudents(false);
-              });
-            observer.disconnect();
-          }
-        });
-      },
-      { rootMargin: "50px" }
-    );
-
-    observer.observe(cardRef.current);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [classItem.id, schoolYearId, hasLoaded]);
-
-  const displayStudents = students.slice(0, 5); // Show max 5 avatars
-  const remainingCount = students.length > 5 ? students.length - 5 : 0;
-
+function ClassCard({ classItem, studentCount }: ClassCardProps) {
   return (
     <Card
-      ref={cardRef}
       className={cn(
         "p-4 cursor-pointer transition-all duration-300",
         "bg-card text-card-foreground",
@@ -84,66 +41,6 @@ function ClassCard({ classItem, schoolYearId, studentCount }: ClassCardProps) {
           </p>
         )}
       </div>
-
-      {/* Student avatars section */}
-      {(hasLoaded || isLoadingStudents || students.length > 0) && (
-        <div>
-          {isLoadingStudents ? (
-            <div className="flex justify-center">
-              <Spinner className="h-4 w-4" />
-            </div>
-          ) : students.length > 0 ? (
-            <div className="flex justify-center">
-              <div
-                className={cn("flex -space-x-2", "*:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background")}
-              >
-                {displayStudents.map((student) => {
-                  const initials = student.fullName
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2);
-                  return (
-                    <div
-                      key={student.id}
-                      data-slot="avatar"
-                      className={cn("w-8 h-8 rounded-full overflow-hidden", "ring-2 ring-background", "shrink-0")}
-                      title={student.fullName}
-                    >
-                      {student.imageSrc ? (
-                        <img
-                          src={student.imageSrc}
-                          alt={student.fullName}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center text-xs font-medium">
-                          {initials}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {remainingCount > 0 && (
-                  <div
-                    data-slot="avatar"
-                    className={cn(
-                      "w-8 h-8 rounded-full ring-2 ring-background",
-                      "bg-muted flex items-center justify-center text-xs font-medium",
-                      "shrink-0"
-                    )}
-                    title={`+${remainingCount} học sinh khác`}
-                  >
-                    +{remainingCount}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      )}
     </Card>
   );
 }
@@ -249,7 +146,6 @@ export default function Classes() {
               <ClassCard
                 key={classItem.id}
                 classItem={classItem}
-                schoolYearId={schoolYear.schoolYearId}
                 studentCount={classItem.totalStudent ?? classItem.studentCount ?? studentCounts[classItem.id]}
               />
             ))}
