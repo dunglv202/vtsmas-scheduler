@@ -408,6 +408,10 @@ export interface ClassItem {
   schoolLevelCode: string;
   schoolYearId: string;
   schoolYearCode: string;
+  teacherName?: string;
+  homeroomTeacherName?: string;
+  totalStudent?: number;
+  studentCount?: number;
   [key: string]: unknown;
 }
 

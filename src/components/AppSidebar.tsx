@@ -10,7 +10,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { clearStoredTokens } from "@/lib/auth";
-import { Bell, Calendar, LogOut, User } from "lucide-react";
+import { Bell, Calendar, GraduationCap, LogOut, User } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const menuItems: {
@@ -23,6 +23,11 @@ const menuItems: {
     icon: <Calendar />,
     label: "Lịch",
     href: "/teaching-schedule",
+  },
+  {
+    icon: <GraduationCap />,
+    label: "Lớp học",
+    href: "/classes",
   },
   {
     icon: <User />,

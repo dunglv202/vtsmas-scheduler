@@ -6,6 +6,7 @@ import { SchoolYearProvider } from "./contexts/SchoolYearContext";
 import { EmployeeProvider } from "./contexts/EmployeeContext";
 import Login from "./pages/Login";
 import TeachingSchedule from "./pages/TeachingSchedule";
+import Classes from "./pages/Classes";
 import NotFound from "./pages/NotFound";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider } from "./components/ui/sidebar";
@@ -22,6 +23,7 @@ function App() {
             <Route index element={<Home />} />
             <Route element={<ProtectedRoute />}>
               <Route path="teaching-schedule" element={<TeachingSchedule />} />
+              <Route path="classes" element={<Classes />} />
               <Route path="*" element={<NotFound />} />
             </Route>
             <Route path="*" element={<NotFound />} />
