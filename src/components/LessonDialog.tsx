@@ -23,7 +23,11 @@ import type { ApprovalHistoryItem } from "@/lib/api";
 import { LectureRecordDialog } from "./lesson-dialog/LectureRecordDialog";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import React from "react";
-export type { LessonInfo, LessonEquipment, ScheduleCell } from "./lesson-dialog/types";
+export type {
+  LessonInfo,
+  LessonEquipment,
+  ScheduleCell,
+} from "./lesson-dialog/types";
 
 interface LessonDialogProps {
   isOpen: boolean;
@@ -54,7 +58,8 @@ export function LessonDialog({
     if (!approvalHistory || approvalHistory.length === 0) return false;
     // Sort by approveDate descending to get the latest
     const sorted = [...approvalHistory].sort(
-      (a, b) => new Date(b.approveDate).getTime() - new Date(a.approveDate).getTime()
+      (a, b) =>
+        new Date(b.approveDate).getTime() - new Date(a.approveDate).getTime()
     );
     return sorted[0]?.isApprove === true;
   }, [approvalHistory]);
@@ -103,7 +108,9 @@ export function LessonDialog({
       // Use setTimeout to ensure DOM is updated after React re-render
       setTimeout(() => {
         // Find the viewport element and scroll to top
-        const viewport = scrollAreaRef.current?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement;
+        const viewport = scrollAreaRef.current?.querySelector(
+          '[data-slot="scroll-area-viewport"]'
+        ) as HTMLElement;
         if (viewport) {
           viewport.scrollTo({ top: 0, behavior: "smooth" });
         }
@@ -120,7 +127,9 @@ export function LessonDialog({
       >
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
           <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>Điền thông tin tiết học cho khung giờ này.</DialogDescription>
+          <DialogDescription>
+            Điền thông tin tiết học cho khung giờ này.
+          </DialogDescription>
         </DialogHeader>
 
         <div ref={scrollAreaRef} className="flex-1 min-h-0">
@@ -133,7 +142,11 @@ export function LessonDialog({
                 error={feedbackState.feedbackError}
               />
 
-              <form id="lesson-form" onSubmit={handleSubmit} className="space-y-4 sm:w-120">
+              <form
+                id="lesson-form"
+                onSubmit={handleSubmit}
+                className="space-y-4 sm:w-120"
+              >
                 <div className="space-y-2 px-1">
                   <label className="text-sm font-medium">Lớp</label>
                   <ClassSelector
@@ -159,12 +172,19 @@ export function LessonDialog({
                 <div className="space-y-2 px-1">
                   <label className="text-sm font-medium">Phân môn</label>
                   <DivisiveConfigurationSelector
-                    divisiveConfigurationList={divisiveConfigurationState.divisiveConfigurationList}
-                    selectedDivisiveConfigurationId={divisiveConfigurationState.selectedDivisiveConfigurationId}
+                    divisiveConfigurationList={
+                      divisiveConfigurationState.divisiveConfigurationList
+                    }
+                    selectedDivisiveConfigurationId={
+                      divisiveConfigurationState.selectedDivisiveConfigurationId
+                    }
                     isLoading={divisiveConfigurationState.isLoading}
                     error={divisiveConfigurationState.error}
                     onChange={divisiveConfigurationState.onChange}
-                    disabled={!classState.selectedClassId || !subjectState.selectedSubjectCode}
+                    disabled={
+                      !classState.selectedClassId ||
+                      !subjectState.selectedSubjectCode
+                    }
                   />
                 </div>
 
@@ -182,7 +202,9 @@ export function LessonDialog({
 
                 {classState.selectedClassId && (
                   <div className="space-y-2 px-1">
-                    <label className="text-sm font-medium">Tiết dạy trước</label>
+                    <label className="text-sm font-medium">
+                      Tiết dạy trước
+                    </label>
                     <PreviousLectureCard
                       previousLecture={previousLectureState.previousLecture}
                       isLoading={previousLectureState.isLoading}
@@ -203,7 +225,9 @@ export function LessonDialog({
                     equipmentType={extrasState.equipmentType}
                     setEquipmentType={extrasState.setEquipmentType}
                     extrasAccordionValue={extrasState.extrasAccordionValue}
-                    setExtrasAccordionValue={extrasState.setExtrasAccordionValue}
+                    setExtrasAccordionValue={
+                      extrasState.setExtrasAccordionValue
+                    }
                   />
                 </div>
 
@@ -227,10 +251,16 @@ export function LessonDialog({
                     onClick={handleToggleBookmark}
                     title={isBookmarked ? "Xóa mẫu đã lưu" : "Lưu mẫu"}
                   >
-                    <BookmarkIcon className="h-4 w-4" fill={isBookmarked ? "currentColor" : "none"} />
+                    <BookmarkIcon
+                      className="h-4 w-4"
+                      fill={isBookmarked ? "currentColor" : "none"}
+                    />
                   </Button>
-                  {isApproved && addedSchedule && (
-                    <Button type="button" onClick={() => setIsRecordDialogOpen(true)}>
+                  {addedSchedule && (
+                    <Button
+                      type="button"
+                      onClick={() => setIsRecordDialogOpen(true)}
+                    >
                       Sổ ghi đầu bài
                     </Button>
                   )}
@@ -275,16 +305,36 @@ export function LessonDialog({
         }}
         classId={classState.selectedClassId}
         schoolYearId={schoolYear?.schoolYearId || ""}
-        schoolLevelCode={classState.classes.find((c) => c.id === classState.selectedClassId)?.schoolLevelCode || ""}
-        className={classState.classes.find((c) => c.id === classState.selectedClassId)?.className || ""}
-        subjectName={subjectState.subjects.find((s) => s.cateCode === subjectState.selectedSubjectCode)?.cateName || ""}
+        schoolLevelCode={
+          classState.classes.find((c) => c.id === classState.selectedClassId)
+            ?.schoolLevelCode || ""
+        }
+        className={
+          classState.classes.find((c) => c.id === classState.selectedClassId)
+            ?.className || ""
+        }
+        subjectName={
+          subjectState.subjects.find(
+            (s) => s.cateCode === subjectState.selectedSubjectCode
+          )?.cateName || ""
+        }
         subjectCode={subjectState.selectedSubjectCode || ""}
         lessonName={feedbackState.feedback?.distributeProgramName || ""}
-        teachingAssignmentId={feedbackState.feedback?.teachingAssignmentId || teachingScheduleId || ""}
+        teachingAssignmentId={
+          feedbackState.feedback?.teachingAssignmentId ||
+          teachingScheduleId ||
+          ""
+        }
         feedbackId={feedbackState.feedback?.id}
-        distributeProgramPeriod={feedbackState.feedback?.distributeProgramPeriod}
-        divisiveConfigurationId={feedbackState.feedback?.divisiveConfigurationId ?? null}
-        divisiveConfigurationName={feedbackState.feedback?.divisiveConfigurationName ?? "Chính"}
+        distributeProgramPeriod={
+          feedbackState.feedback?.distributeProgramPeriod
+        }
+        divisiveConfigurationId={
+          feedbackState.feedback?.divisiveConfigurationId ?? null
+        }
+        divisiveConfigurationName={
+          feedbackState.feedback?.divisiveConfigurationName ?? "Chính"
+        }
         feedback={feedbackState.feedback}
         cellInfo={cellInfo}
         weekDates={weekDates}
