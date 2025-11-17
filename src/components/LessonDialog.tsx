@@ -256,14 +256,6 @@ export function LessonDialog({
                       fill={isBookmarked ? "currentColor" : "none"}
                     />
                   </Button>
-                  {addedSchedule && (
-                    <Button
-                      type="button"
-                      onClick={() => setIsRecordDialogOpen(true)}
-                    >
-                      Sổ ghi đầu bài
-                    </Button>
-                  )}
                   {!isApproved && (
                     <>
                       {addedSchedule && (
@@ -289,6 +281,14 @@ export function LessonDialog({
                         {isSaving ? "Đang lưu..." : "Lưu"}
                       </Button>
                     </>
+                  )}
+                  {addedSchedule && (
+                    <Button
+                      type="button"
+                      onClick={() => setIsRecordDialogOpen(true)}
+                    >
+                      Sổ ghi đầu bài
+                    </Button>
                   )}
                 </DialogFooter>
               </form>
