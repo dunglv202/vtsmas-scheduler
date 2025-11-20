@@ -1156,7 +1156,7 @@ export interface SaveLessonFeedbackRequest {
   divisiveConfigurationId: string | null;
   divisiveConfigurationName: string | null;
   status: number;
-  studentSkipCount: number;
+  studentSkipCount: number | null;
   studentNames: Array<{
     studentName: string;
     name: string;
