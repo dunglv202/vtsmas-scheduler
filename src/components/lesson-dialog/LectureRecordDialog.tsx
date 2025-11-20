@@ -38,6 +38,7 @@ interface LectureRecordDialogProps {
   lessonName?: string;
   teachingAssignmentId?: string;
   feedbackId?: string;
+  lessonAssessmentBookId?: string;
   distributeProgramPeriod?: number;
   divisiveConfigurationId?: string | null;
   divisiveConfigurationName?: string | null;
@@ -164,6 +165,7 @@ export function LectureRecordDialog({
   lessonName,
   teachingAssignmentId,
   feedbackId,
+  lessonAssessmentBookId,
   distributeProgramPeriod,
   divisiveConfigurationId,
   divisiveConfigurationName,
@@ -360,6 +362,11 @@ export function LectureRecordDialog({
       return;
     }
 
+    if (!lessonAssessmentBookId) {
+      setSaveError("Thiếu thông tin sổ đầu bài. Vui lòng đợi dữ liệu được tải.");
+      return;
+    }
+
     setIsSaving(true);
     setSaveError(null);
 
@@ -416,6 +423,7 @@ export function LectureRecordDialog({
         dateTo,
         schoolYearId,
         schoolLevelCode,
+        lessonAssessmentBookId: lessonAssessmentBookId!,
         classId,
         className,
         dayOfWeek,

@@ -173,6 +173,7 @@ export function LessonDialog({
                 isLoading={feedbackState.isLoading}
                 feedback={feedbackState.feedback}
                 error={feedbackState.feedbackError}
+                ratingConfigs={feedbackState.ratingConfigs}
               />
 
               <form id="lesson-form" onSubmit={handleSubmit} className="space-y-4 sm:w-120">
@@ -298,7 +299,12 @@ export function LessonDialog({
                     </>
                   )}
                   {addedSchedule && (
-                    <Button type="button" onClick={() => setIsRecordDialogOpen(true)}>
+                    <Button
+                      type="button"
+                      onClick={() => setIsRecordDialogOpen(true)}
+                      disabled={feedbackState.isLoading}
+                      title={feedbackState.isLoading ? "Đang tải thông tin sổ đầu bài..." : undefined}
+                    >
                       Sổ ghi đầu bài
                     </Button>
                   )}
@@ -324,6 +330,9 @@ export function LessonDialog({
         lessonName={lectureLessonName}
         teachingAssignmentId={feedbackState.feedback?.teachingAssignmentId || employee?.employeeId || ""}
         feedbackId={feedbackState.feedback?.id}
+        lessonAssessmentBookId={
+          feedbackState.feedback?.lessonAssessmentBookId || feedbackState.lessonAssessmentBookId || undefined
+        }
         distributeProgramPeriod={lectureDistributeProgramPeriod}
         divisiveConfigurationId={lectureDivisiveConfigurationId}
         divisiveConfigurationName={lectureDivisiveConfigurationName}

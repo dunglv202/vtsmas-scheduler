@@ -1142,7 +1142,7 @@ export interface SaveLessonFeedbackRequest {
   dateTo: string;
   schoolYearId: string;
   schoolLevelCode: string;
-  lessonAssessmentBookId?: string;
+  lessonAssessmentBookId: string;
   classId: string;
   className: string;
   dayOfWeek: number;

@@ -6,6 +6,7 @@ import {
   fetchSubjects,
   fetchLessonFeedback,
   fetchDivisiveConfiguration,
+  fetchLessonRatingConfigs,
   createTeachingSchedule,
   createTeachingScheduleDetail,
   deleteTeachingScheduleDetails,
@@ -17,6 +18,7 @@ import {
   type SubjectItem,
   type LessonFeedbackDetail,
   type DivisiveConfigurationItem,
+  type LessonRatingConfig,
 } from "@/lib/api";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { useEmployee } from "@/contexts/EmployeeContext";
@@ -81,6 +83,8 @@ interface FeedbackState {
   feedback: LessonFeedbackDetail | null;
   feedbackError: string | null;
   isLoading: boolean;
+  lessonAssessmentBookId: string | null;
+  ratingConfigs: LessonRatingConfig[];
 }
 
 interface ExtrasState {
@@ -168,6 +172,8 @@ export function useLessonDialog({
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [previousLecture, setPreviousLecture] = useState<TeachingScheduleDetail | null>(null);
   const [feedback, setFeedback] = useState<LessonFeedbackDetail | null>(null);
+  const [lessonAssessmentBookId, setLessonAssessmentBookId] = useState<string | null>(null);
+  const [ratingConfigs, setRatingConfigs] = useState<LessonRatingConfig[]>([]);
   const [feedbackRefetchCounter, setFeedbackRefetchCounter] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -237,6 +243,7 @@ export function useLessonDialog({
       setIsLoadingSubjects(false);
       setIsLoadingDivisiveConfiguration(false);
       setFeedback(null);
+      setLessonAssessmentBookId(null);
       setFeedbackError(null);
       setIsLoadingFeedback(false);
       setPreviousLecture(null);
@@ -745,6 +752,7 @@ export function useLessonDialog({
   useEffect(() => {
     if (!isOpen || !selectedClassId || !selectedSubjectCode || !cellInfo || !schoolYear) {
       setFeedback(null);
+      setLessonAssessmentBookId(null);
       setFeedbackError(null);
       setIsLoadingFeedback(false);
       return;
@@ -753,6 +761,7 @@ export function useLessonDialog({
     const selectedClass = classes.find((cls) => cls.id === selectedClassId);
     if (!selectedClass) {
       setFeedback(null);
+      setLessonAssessmentBookId(null);
       setFeedbackError(null);
       setIsLoadingFeedback(false);
       return;
@@ -761,6 +770,7 @@ export function useLessonDialog({
     setIsLoadingFeedback(true);
     setFeedbackError(null);
     setFeedback(null);
+    setLessonAssessmentBookId(null);
 
     const getWeekRange = (date: Date) => {
       const d = new Date(date);
@@ -795,12 +805,14 @@ export function useLessonDialog({
     const dayIndex = dayNameToOffset[cellInfo.day];
     if (dayIndex === undefined) {
       setFeedback(null);
+      setLessonAssessmentBookId(null);
       setIsLoadingFeedback(false);
       return;
     }
 
     if (!weekDates || !weekDates[dayIndex]) {
       setFeedback(null);
+      setLessonAssessmentBookId(null);
       setFeedbackError(null);
       setIsLoadingFeedback(false);
       return;
@@ -831,9 +843,13 @@ export function useLessonDialog({
       .then((response) => {
         if (!response) {
           setFeedback(null);
+          setLessonAssessmentBookId(null);
           setIsLoadingFeedback(false);
           return;
         }
+
+        // Store the lessonAssessmentBookId from the response
+        setLessonAssessmentBookId(response.id);
 
         const matchedDetail = response.lessonAssessmentBookDetails.find((detail) => {
           const detailDate = new Date(detail.dateStudy);
@@ -852,10 +868,40 @@ export function useLessonDialog({
       .catch((error) => {
         console.error("Failed to fetch lecture feedback:", error);
         setFeedback(null);
+        setLessonAssessmentBookId(null);
         setFeedbackError(error instanceof Error ? error.message : "Không thể tải nhận xét tiết dạy");
         setIsLoadingFeedback(false);
       });
   }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, classes, weekDates, feedbackRefetchCounter, schoolYear]);
+
+  // Fetch rating configs when schoolYear and selectedClass are available
+  useEffect(() => {
+    if (!isOpen || !schoolYear) {
+      setRatingConfigs([]);
+      return;
+    }
+
+    const selectedClass = classes.find((cls) => cls.id === selectedClassId);
+    if (!selectedClass || !selectedClass.schoolLevelCode) {
+      setRatingConfigs([]);
+      return;
+    }
+
+    const loadRatingConfigs = async () => {
+      try {
+        const configs = await fetchLessonRatingConfigs(
+          schoolYear.schoolYearId,
+          selectedClass.schoolLevelCode || DEFAULT_SCHOOL_LEVEL_CODE
+        );
+        setRatingConfigs(configs);
+      } catch (error) {
+        console.error("Failed to fetch rating configs:", error);
+        setRatingConfigs([]);
+      }
+    };
+
+    loadRatingConfigs();
+  }, [isOpen, schoolYear, selectedClassId, classes]);
 
   const dialogTitle = useMemo(() => getDialogTitle(cellInfo), [cellInfo]);
 
@@ -925,8 +971,10 @@ export function useLessonDialog({
       feedback,
       feedbackError,
       isLoading: isLoadingFeedback,
+      lessonAssessmentBookId,
+      ratingConfigs,
     }),
-    [feedback, feedbackError, isLoadingFeedback]
+    [feedback, feedbackError, isLoadingFeedback, lessonAssessmentBookId, ratingConfigs]
   );
 
   const extrasState: ExtrasState = useMemo(
