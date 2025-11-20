@@ -429,7 +429,7 @@ export function LectureRecordDialog({
         divisiveConfigurationId: divisiveConfigurationId ?? null,
         divisiveConfigurationName: divisiveConfigurationName ?? "Chính",
         status: 1,
-        studentSkipCount: selectedStudents.length,
+        studentSkipCount: selectedStudents.length || null,
         studentNames,
         teachingAssignmentId,
         teachingAssignmentName: teacherName || "",
