@@ -22,6 +22,7 @@ import { BookmarkIcon } from "lucide-react";
 import type { ApprovalHistoryItem } from "@/lib/api";
 import { LectureRecordDialog } from "./lesson-dialog/LectureRecordDialog";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
+import { useEmployee } from "@/contexts/EmployeeContext";
 import React from "react";
 export type { LessonInfo, LessonEquipment, ScheduleCell } from "./lesson-dialog/types";
 
@@ -49,6 +50,7 @@ export function LessonDialog({
   approvalHistory = [],
 }: LessonDialogProps) {
   const { schoolYear } = useSchoolYear();
+  const { employee } = useEmployee();
   // Check if the latest approval is true
   const isApproved = React.useMemo(() => {
     if (!approvalHistory || approvalHistory.length === 0) return false;
@@ -320,7 +322,7 @@ export function LessonDialog({
         subjectName={subjectState.subjects.find((s) => s.cateCode === subjectState.selectedSubjectCode)?.cateName || ""}
         subjectCode={subjectState.selectedSubjectCode || ""}
         lessonName={lectureLessonName}
-        teachingAssignmentId={feedbackState.feedback?.teachingAssignmentId || teachingScheduleId || ""}
+        teachingAssignmentId={feedbackState.feedback?.teachingAssignmentId || employee?.employeeId || ""}
         feedbackId={feedbackState.feedback?.id}
         distributeProgramPeriod={lectureDistributeProgramPeriod}
         divisiveConfigurationId={lectureDivisiveConfigurationId}
