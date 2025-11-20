@@ -296,6 +296,13 @@ export function LectureRecordDialog({
     }
   }, [isOpen, feedback, students, selectedStudents.length]);
 
+  // Set default rating to first item when dialog opens (if no existing feedback)
+  useEffect(() => {
+    if (isOpen && !feedback && ratingConfigs.length > 0 && !rating && !isLoadingRatingConfigs) {
+      setRating(ratingConfigs[0].id);
+    }
+  }, [isOpen, feedback, ratingConfigs, rating, isLoadingRatingConfigs]);
+
   // Handle student selection
   const handleStudentSelect = (studentId: string) => {
     if (!studentId) return;
