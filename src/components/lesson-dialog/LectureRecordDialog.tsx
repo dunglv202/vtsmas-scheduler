@@ -376,15 +376,15 @@ export function LectureRecordDialog({
       const dateTo = formatDateISO(weekRange.sunday);
       const dateStudy = formatDateISO(lessonDate);
 
-      // Convert day name to dayOfWeek number (Monday = 0, Sunday = 6)
+      // Convert day name to dayOfWeek number (Monday = 1, Sunday = 7)
       const dayNameToNumber: Record<string, number> = {
-        Monday: 0,
-        Tuesday: 1,
-        Wednesday: 2,
-        Thursday: 3,
-        Friday: 4,
-        Saturday: 5,
-        Sunday: 6,
+        Monday: 1,
+        Tuesday: 2,
+        Wednesday: 3,
+        Thursday: 4,
+        Friday: 5,
+        Saturday: 6,
+        Sunday: 7,
       };
       const dayOfWeek = dayNameToNumber[cellInfo.day] ?? 0;
 
