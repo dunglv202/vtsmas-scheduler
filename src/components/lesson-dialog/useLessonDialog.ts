@@ -1099,10 +1099,10 @@ export function useLessonDialog({
     const trimmedNotes = notes.trim();
     const trimmedEquipmentName = equipmentName.trim();
     const trimmedEquipmentQuantity = equipmentQuantity.trim();
-    const isRegisterLearningTool = Boolean(trimmedEquipmentName || trimmedEquipmentQuantity || equipmentType);
-    const toolTypeValue = mapEquipmentTypeToToolType(equipmentType);
+    const shouldRegisterEquipment = Boolean(trimmedEquipmentName && trimmedEquipmentQuantity);
+    const toolTypeValue = shouldRegisterEquipment ? mapEquipmentTypeToToolType(equipmentType) : null;
 
-    if (isRegisterLearningTool && toolTypeValue === null) {
+    if (shouldRegisterEquipment && toolTypeValue === null) {
       setSaveError("Vui lòng chọn loại thiết bị.");
       return;
     }
@@ -1112,7 +1112,7 @@ export function useLessonDialog({
       return;
     }
 
-    const equipmentInfo = isRegisterLearningTool
+    const equipmentInfo = shouldRegisterEquipment
       ? {
           name: trimmedEquipmentName || undefined,
           quantity: trimmedEquipmentQuantity || undefined,
@@ -1136,10 +1136,10 @@ export function useLessonDialog({
       distributeProgramId: lessonId,
       distributeProgramPeriod: String(lessonPeriod),
       distributeProgramName: lessonName,
-      isRegisterLearningTool,
-      toolName: isRegisterLearningTool ? trimmedEquipmentName || null : null,
-      totalTool: isRegisterLearningTool ? trimmedEquipmentQuantity || null : null,
-      toolType: isRegisterLearningTool ? toolTypeValue : null,
+      isRegisterLearningTool: shouldRegisterEquipment,
+      toolName: shouldRegisterEquipment ? trimmedEquipmentName || null : null,
+      totalTool: shouldRegisterEquipment ? trimmedEquipmentQuantity || null : null,
+      toolType: shouldRegisterEquipment ? toolTypeValue : null,
       status: mapLectureTypeToStatus(lectureType),
       dateStudy,
     };
