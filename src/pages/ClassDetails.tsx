@@ -12,7 +12,7 @@ import {
   type StudentItem,
   type SchoolYearDateRange,
 } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -35,6 +35,34 @@ export default function ClassDetails() {
   const [hasMoreWeeks, setHasMoreWeeks] = useState(true);
   const [schoolYearDateRange, setSchoolYearDateRange] = useState<SchoolYearDateRange | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const { activeStudents, inactiveStudents } = useMemo(() => {
+    const isActive = (student: StudentItem) => student.status === "Đang học" || student.statusCode === "01";
+
+    const active = students.filter(isActive);
+    const inactive = students.filter((student) => !isActive(student));
+
+    return { activeStudents: active, inactiveStudents: inactive };
+  }, [students]);
+
+  const renderStudentCard = (student: StudentItem, options?: { showStatus?: boolean }) => (
+    <div key={student.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+      {student.imageSrc ? (
+        <img src={student.imageSrc} alt={student.fullName} className="w-12 h-12 rounded-full object-cover" />
+      ) : (
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
+          {student.fullName.charAt(0).toUpperCase()}
+        </div>
+      )}
+      <div>
+        <p className="font-medium">{student.fullName}</p>
+        {student.studentCode && <p className="text-muted-foreground text-xs">Mã: {student.studentCode}</p>}
+        {options?.showStatus && (
+          <p className="text-muted-foreground text-xs mt-1">{student.status || "Không rõ trạng thái"}</p>
+        )}
+      </div>
+    </div>
+  );
 
   // Fetch school year date range for week number calculation
   useEffect(() => {
@@ -412,7 +440,7 @@ export default function ClassDetails() {
               <div className="mt-6">
                 <h3 className="text-base font-semibold mb-4">
                   Danh sách học sinh{" "}
-                  {!isLoadingStudents && <span className="text-muted-foreground">({students.length})</span>}
+                  {!isLoadingStudents && <span className="text-muted-foreground">({activeStudents.length})</span>}
                 </h3>
                 {isLoadingStudents ? (
                   <div className="flex items-center justify-center py-8">
@@ -420,34 +448,30 @@ export default function ClassDetails() {
                     <span className="text-sm text-muted-foreground">Đang tải danh sách học sinh...</span>
                   </div>
                 ) : students.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {students.map((student) => (
-                      <div
-                        key={student.id}
-                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        {student.imageSrc ? (
-                          <img
-                            src={student.imageSrc}
-                            alt={student.fullName}
-                            className="w-12 h-12 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
-                            {student.fullName.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium">{student.fullName}</p>
-                          {student.studentCode && <p className="text-muted-foreground">Mã: {student.studentCode}</p>}
-                        </div>
+                  <>
+                    {activeStudents.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {activeStudents.map((student) => renderStudentCard(student))}
                       </div>
-                    ))}
-                  </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">Không có học sinh đang học.</p>
+                    )}
+                  </>
                 ) : (
                   <p className="text-muted-foreground">Chưa có học sinh nào</p>
                 )}
               </div>
+
+              {!isLoadingStudents && inactiveStudents.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-base font-semibold mb-4">
+                    Đã thôi học <span className="text-muted-foreground">({inactiveStudents.length})</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {inactiveStudents.map((student) => renderStudentCard(student, { showStatus: true }))}
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
         </TabsContent>
@@ -498,7 +522,7 @@ export default function ClassDetails() {
                   <div className="flex justify-center mt-4">
                     <Button
                       onClick={handleLoadMoreWeeks}
-                      variant="outline"
+                      variant="secondary"
                       className="w-full"
                       disabled={isLoadingMoreWeeks}
                     >
@@ -508,7 +532,7 @@ export default function ClassDetails() {
                           Đang tải...
                         </>
                       ) : (
-                        "Tải thêm tuần"
+                        "Tải thêm"
                       )}
                     </Button>
                   </div>
