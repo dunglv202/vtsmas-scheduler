@@ -176,7 +176,7 @@ export async function fetchSchoolYears(): Promise<SchoolYear[]> {
 
   try {
     const response = await apiClient.get<SchoolYear[]>(
-      "https://gateway.vtsmas.vn/api/danh-muc-truong/nam-hoc-nha-truong/tat-ca"
+      "https://hoaithuong.space/vtsmas/api/danh-muc-truong/nam-hoc-nha-truong/tat-ca"
     );
 
     if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
@@ -208,7 +208,7 @@ export async function fetchSchoolYearDateRange(schoolYearId: string): Promise<Sc
 
   try {
     const response = await apiClient.get<SchoolYearDateRange>(
-      `https://gateway.vtsmas.vn/api/can-bo/cau-hinh-tuan/ngay-lon-nho-trong-nam/${schoolYearId}`,
+      `https://hoaithuong.space/vtsmas/api/can-bo/cau-hinh-tuan/ngay-lon-nho-trong-nam/${schoolYearId}`,
       {
         headers: {
           Accept: "application/json, text/plain, */*",
@@ -260,7 +260,7 @@ export async function fetchSubjects(schoolLevelCode: string = "03"): Promise<Sub
 
   try {
     const response = await apiClient.get<SubjectItem[]>(
-      `https://gateway.vtsmas.vn/api/cau-hinh/danh-muc/loai-danh-muc/DM_MON_HOC/${schoolLevelCode}?IsSort=true`
+      `https://hoaithuong.space/vtsmas/api/cau-hinh/danh-muc/loai-danh-muc/DM_MON_HOC/${schoolLevelCode}?IsSort=true`
     );
 
     if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
@@ -383,7 +383,7 @@ export async function fetchCurriculum(filter?: CurriculumFilter): Promise<Curric
 
   try {
     const response = await apiClient.post<CurriculumResponse>(
-      "https://gateway.vtsmas.vn/api/can-bo/phan-phoi-chuong-trinh/phan-trang",
+      "https://hoaithuong.space/vtsmas/api/can-bo/phan-phoi-chuong-trinh/phan-trang",
       requestBody
     );
 
@@ -494,7 +494,7 @@ export async function fetchClasses(filter?: ClassFilter): Promise<ClassResponse>
 
   try {
     const response = await apiClient.post<ClassResponse>(
-      "https://gateway.vtsmas.vn/api/hoc-sinh/lop-hoc/phan-trang",
+      "https://hoaithuong.space/vtsmas/api/hoc-sinh/lop-hoc/phan-trang",
       requestBody
     );
 
@@ -586,7 +586,7 @@ export async function fetchTeachingSchedule(
 
   try {
     const response = await apiClient.get<TeachingScheduleResponse>(
-      `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/theo-tuan/${fromDate}/${toDate}/${employeeId}/${schoolYearId}/${schoolLevelCode}`
+      `https://hoaithuong.space/vtsmas/api/can-bo/lich-bao-giang/theo-tuan/${fromDate}/${toDate}/${employeeId}/${schoolYearId}/${schoolLevelCode}`
     );
 
     // Handle 204 No Content or empty response body
@@ -682,7 +682,7 @@ export async function createTeachingScheduleDetail(payload: CreateTeachingSchedu
   }
 
   try {
-    await apiClient.post("https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/tao/tung-chi-tiet", payload);
+    await apiClient.post("https://hoaithuong.space/vtsmas/api/can-bo/lich-bao-giang/tao/tung-chi-tiet", payload);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const errorText = error.response?.data || error.message;
@@ -704,7 +704,7 @@ export async function createTeachingSchedule(
 
   try {
     const response = await apiClient.post<TeachingScheduleResponse>(
-      "https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/tao",
+      "https://hoaithuong.space/vtsmas/api/can-bo/lich-bao-giang/tao",
       payload
     );
 
@@ -743,7 +743,7 @@ export async function deleteTeachingScheduleDetails(
 
   try {
     await apiClient.post(
-      `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/xoa/${teachingScheduleId}`,
+      `https://hoaithuong.space/vtsmas/api/can-bo/lich-bao-giang/xoa/${teachingScheduleId}`,
       scheduleDetailIds
     );
   } catch (error) {
@@ -826,7 +826,7 @@ export async function fetchLessonFeedback(payload: LessonFeedbackRequest): Promi
 
   try {
     const response = await apiClient.post<LessonFeedbackResponse>(
-      "https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/theo-ngay",
+      "https://hoaithuong.space/vtsmas/api/can-bo/so-dau-bai/theo-ngay",
       payload
     );
 
@@ -907,7 +907,7 @@ export async function fetchEmployeeInfo(employeeId: string, schoolYearId: string
 
   try {
     const response = await apiClient.get<EmployeeInfo>(
-      `https://gateway.vtsmas.vn/api/can-bo/v2/${employeeId}/${schoolYearId}`
+      `https://hoaithuong.space/vtsmas/api/can-bo/v2/${employeeId}/${schoolYearId}`
     );
 
     if (response.status === 204 || !response.data) {
@@ -949,7 +949,7 @@ export async function fetchApprovalHistory(weekTeachingScheduleId: string): Prom
 
   try {
     const response = await apiClient.get<ApprovalHistoryItem[]>(
-      `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/lich-su-phe-duyet/${weekTeachingScheduleId}`
+      `https://hoaithuong.space/vtsmas/api/can-bo/lich-bao-giang/lich-su-phe-duyet/${weekTeachingScheduleId}`
     );
 
     // Handle 204 No Content or empty response body
@@ -1008,7 +1008,7 @@ export async function fetchStudentsByClass(classId: string, schoolYearId: string
 
   try {
     const response = await apiClient.get<StudentItem[]>(
-      `https://gateway.vtsmas.vn/api/hoc-sinh/lay-hoc-sinh-theo-lop/${classId}/${schoolYearId}`
+      `https://hoaithuong.space/vtsmas/api/hoc-sinh/lay-hoc-sinh-theo-lop/${classId}/${schoolYearId}`
     );
 
     // Handle 204 No Content or empty response body
@@ -1063,7 +1063,7 @@ export async function fetchDivisiveConfiguration(
     throw new Error("No access token found. Please login first.");
   }
 
-  const url = new URL("https://gateway.vtsmas.vn/api/danh-muc-truong/cau-hinh-phan-mon/danh-sach");
+  const url = new URL("https://hoaithuong.space/vtsmas/api/danh-muc-truong/cau-hinh-phan-mon/danh-sach");
   url.searchParams.append("schoolLevelCode", filter.schoolLevelCode);
   url.searchParams.append("gradeCode", filter.gradeCode);
   url.searchParams.append("schoolYearId", filter.schoolYearId);
@@ -1111,7 +1111,7 @@ export async function fetchLessonRatingConfigs(
     throw new Error("No access token found. Please login first.");
   }
 
-  const url = `https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/danh-sach-cau-hinh-so-dau-bai-v2/${schoolYearId}/${schoolLevelCode}`;
+  const url = `https://hoaithuong.space/vtsmas/api/can-bo/so-dau-bai/danh-sach-cau-hinh-so-dau-bai-v2/${schoolYearId}/${schoolLevelCode}`;
 
   try {
     const response = await apiClient.get<LessonRatingConfig[]>(url);
@@ -1174,7 +1174,7 @@ export async function saveLessonFeedback(payload: SaveLessonFeedbackRequest): Pr
     throw new Error("No access token found. Please login first.");
   }
 
-  const url = "https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/them-sua-so-dau-bai";
+  const url = "https://hoaithuong.space/vtsmas/api/can-bo/so-dau-bai/them-sua-so-dau-bai";
 
   try {
     await apiClient.post(url, payload);
