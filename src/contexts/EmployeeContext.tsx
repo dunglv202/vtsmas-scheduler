@@ -42,14 +42,8 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
       const payload = JSON.parse(
         atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
       );
-      // Try common claim names for employee/user ID
-      return (
-        payload.sub ||
-        payload.employeeId ||
-        payload.userId ||
-        payload.id ||
-        null
-      );
+      // Try common claim names for employee
+      return payload.employeeid || null;
     } catch {
       return null;
     }
