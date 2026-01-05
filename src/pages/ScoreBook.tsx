@@ -20,7 +20,7 @@ import {
   type PublishScoreRequest,
   type ScoreBookPoint,
 } from "@/lib/api";
-import { useEffect, useState, useMemo, useRef, type ChangeEvent } from "react";
+import { useEffect, useState, useRef, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -146,27 +146,8 @@ export default function ScoreBook() {
     setSelectedSubjectId("");
     setScores([]);
     setStudents([]);
+    setScoreBookTemplate(null);
   }, [selectedClassId]);
-
-  // Fetch students when class is selected
-  useEffect(() => {
-    if (!selectedClassId || !schoolYear) {
-      setStudents([]);
-      return;
-    }
-
-    const loadStudents = async () => {
-      try {
-        const studentsData = await fetchStudentsByClass(selectedClassId, schoolYear.schoolYearId);
-        setStudents(studentsData);
-      } catch (err) {
-        console.error("Failed to fetch students:", err);
-        setStudents([]);
-      }
-    };
-
-    loadStudents();
-  }, [selectedClassId, schoolYear]);
 
   // Fetch subjects only when a class is selected
   useEffect(() => {
@@ -233,17 +214,25 @@ export default function ScoreBook() {
     }
   }, [selectedSubjectId]);
 
-  // Fetch score book template when both class and subject are selected
+  // Fetch score book template and students when both class and subject are selected
+  // This builds the table layout
   useEffect(() => {
     if (!selectedClassId || !selectedSubjectId || !schoolYear || !selectedClass || !selectedSubject) {
       setScoreBookTemplate(null);
+      setStudents([]);
       return;
     }
 
-    const loadTemplate = async () => {
+    const loadTemplateAndStudents = async () => {
       try {
         const schoolLevelCode = selectedClass.schoolLevelCode || "03";
-        const templates = await fetchScoreBookTemplates(schoolLevelCode, schoolYear.schoolYearId);
+
+        // Fetch both template and students in parallel
+        const [templates, studentsData] = await Promise.all([
+          fetchScoreBookTemplates(schoolLevelCode, schoolYear.schoolYearId),
+          fetchStudentsByClass(selectedClassId, schoolYear.schoolYearId),
+        ]);
+
         const semester = 1; // TODO: Make this configurable
         const scoreBookType = 1;
 
@@ -266,14 +255,23 @@ export default function ScoreBook() {
           });
         }
 
+        // Sort students by sortOrderByClass or sortOrder
+        const sortedStudents = [...studentsData].sort((a, b) => {
+          const orderA = a.sortOrderByClass ?? a.sortOrder ?? 0;
+          const orderB = b.sortOrderByClass ?? b.sortOrder ?? 0;
+          return orderA - orderB;
+        });
+
         setScoreBookTemplate(matchingTemplate);
+        setStudents(sortedStudents);
       } catch (err) {
-        console.error("Failed to fetch score book template:", err);
+        console.error("Failed to fetch template or students:", err);
         setScoreBookTemplate(null);
+        setStudents([]);
       }
     };
 
-    loadTemplate();
+    loadTemplateAndStudents();
   }, [selectedClassId, selectedSubjectId, schoolYear, selectedClass, selectedSubject]);
 
   // Fetch scores only when both class and subject are selected
@@ -367,15 +365,6 @@ export default function ScoreBook() {
     scoreValueMap.set(score.studentId, studentScoreMap);
   });
 
-  // Create a map for quick lookup of student details by studentId
-  const studentMap = useMemo(() => {
-    const map = new Map<string, StudentItem>();
-    students.forEach((student) => {
-      map.set(student.id, student);
-    });
-    return map;
-  }, [students]);
-
   // Get the value for a score cell (either from edited scores or original scores)
   const getScoreValue = (studentId: string, groupCode: string, pointCode: string): string => {
     if (isEditMode && editedScores.has(studentId)) {
@@ -461,20 +450,24 @@ export default function ScoreBook() {
       });
 
       // Build studentPoints array - only include students with changes
-      const studentPoints = scores
-        .map((score) => {
+      // Iterate over students list (not scores) to maintain order
+      const studentPoints = students
+        .map((student) => {
           // Get current values (edited or original)
           const currentScoreMap = new Map<string, string>();
 
-          // Start with original scores
-          score.pointDetails.forEach((detail) => {
-            const key = `${detail.pointGroupCode}-${detail.pointCode}`;
-            currentScoreMap.set(key, detail.pointValue || "");
-          });
+          // Start with original scores if they exist
+          const scoreData = scores.find((s) => s.studentId === student.id);
+          if (scoreData) {
+            scoreData.pointDetails.forEach((detail) => {
+              const key = `${detail.pointGroupCode}-${detail.pointCode}`;
+              currentScoreMap.set(key, detail.pointValue || "");
+            });
+          }
 
           // Override with edited scores if any
-          if (editedScores.has(score.studentId)) {
-            const editedMap = editedScores.get(score.studentId)!;
+          if (editedScores.has(student.id)) {
+            const editedMap = editedScores.get(student.id)!;
             editedMap.forEach((value, key) => {
               currentScoreMap.set(key, value);
             });
@@ -493,7 +486,7 @@ export default function ScoreBook() {
 
           // Check all points from template to find new/modified/deleted ones
           pointMetadataMap.forEach((pointMetadata, key) => {
-            const originalValue = scoreValueMap.get(score.studentId)?.get(key) || "";
+            const originalValue = scoreValueMap.get(student.id)?.get(key) || "";
             const currentValue = currentScoreMap.get(key) || "";
 
             // Only include if there's a change
@@ -520,11 +513,11 @@ export default function ScoreBook() {
           }
 
           return {
-            studentId: score.studentId,
-            studentCode: score.studentCode,
-            studentName: score.studentName,
+            studentId: student.id,
+            studentCode: student.studentCode,
+            studentName: student.fullName,
             pointDetails,
-            teacherComment: score.teacherComment,
+            teacherComment: scoreData?.teacherComment || null,
           };
         })
         .filter((studentPoint): studentPoint is NonNullable<typeof studentPoint> => studentPoint !== null);
@@ -789,33 +782,30 @@ export default function ScoreBook() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {scores.map((score: StudentScoreItem, index: number) => {
+                    {students.map((student, index) => {
                       return (
-                        <TableRow key={score.studentId}>
+                        <TableRow key={student.id}>
                           <TableCell className="text-center">{index + 1}</TableCell>
                           <TableCell>
                             <StudentNameWithPopover
-                              studentId={score.studentId}
-                              studentName={score.studentName}
-                              studentCode={score.studentCode}
-                              student={studentMap.get(score.studentId)}
+                              studentId={student.id}
+                              studentName={student.fullName}
+                              studentCode={student.studentCode}
+                              student={student}
                             />
                           </TableCell>
                           {tableStructure.allPoints.map(({ groupCode, pointCode, pointType }) => {
-                            const value = getScoreValue(score.studentId, groupCode, pointCode);
-                            const changeType = getScoreChangeType(score.studentId, groupCode, pointCode);
+                            const value = getScoreValue(student.id, groupCode, pointCode);
+                            const changeType = getScoreChangeType(student.id, groupCode, pointCode);
                             const isCommentField = pointType === 4;
                             return (
-                              <TableCell
-                                key={`${score.studentId}-${groupCode}-${pointCode}`}
-                                className="text-center p-1.5"
-                              >
+                              <TableCell key={`${student.id}-${groupCode}-${pointCode}`} className="text-center p-1.5">
                                 <Input
                                   type="text"
                                   value={value}
                                   readOnly={!isEditMode}
                                   onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                    handleScoreChange(score.studentId, groupCode, pointCode, e.target.value)
+                                    handleScoreChange(student.id, groupCode, pointCode, e.target.value)
                                   }
                                   className={cn(
                                     "h-8",
