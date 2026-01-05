@@ -11,11 +11,14 @@ import {
   fetchScores,
   fetchScoreBookTemplates,
   fetchStudentsByClass,
+  publishScores,
   type ClassSubjectItem,
   type ClassItem,
   type StudentScoreItem,
   type ScoreBookTemplate,
   type StudentItem,
+  type PublishScoreRequest,
+  type ScoreBookPoint,
 } from "@/lib/api";
 import { useEffect, useState, useMemo, useRef, type ChangeEvent } from "react";
 import { toast } from "sonner";
@@ -200,8 +203,9 @@ export default function ScoreBook() {
       setIsLoadingClasses(true);
       setError(null);
       try {
+        // Default to "03" for initial fetch, will use selected class's value when available
         const response = await fetchClasses({
-          schoolLevelCode: "03", // TODO: Get from user context or API
+          schoolLevelCode: "03",
           schoolYearId: schoolYear.schoolYearId,
         });
         setClasses(response.items);
@@ -238,7 +242,8 @@ export default function ScoreBook() {
 
     const loadTemplate = async () => {
       try {
-        const templates = await fetchScoreBookTemplates("03", schoolYear.schoolYearId); // TODO: Get schoolLevelCode from user context
+        const schoolLevelCode = selectedClass.schoolLevelCode || "03";
+        const templates = await fetchScoreBookTemplates(schoolLevelCode, schoolYear.schoolYearId);
         const semester = 1; // TODO: Make this configurable
         const scoreBookType = 1;
 
@@ -271,6 +276,7 @@ export default function ScoreBook() {
       setIsLoadingScores(true);
       setError(null);
       try {
+        const schoolLevelCode = selectedClass.schoolLevelCode || "03";
         const scoresData = await fetchScores(
           {
             subjectCode: selectedSubject.subjectCode,
@@ -278,7 +284,7 @@ export default function ScoreBook() {
             classRoomIds: [selectedClassId],
             gradeLevelCode: selectedClass.gradeLevelCode || "",
             scoreBookType: 1,
-            schoolLevelCode: "03", // TODO: Get from user context or API
+            schoolLevelCode,
             schoolYearId: schoolYear.schoolYearId,
             semester: 1,
             batchNumberId: "00000000-0000-0000-0000-000000000000",
@@ -416,18 +422,157 @@ export default function ScoreBook() {
 
   // Handle save changes
   const handleSaveChanges = () => {
-    // TODO: Implement API call to save changes
-    toast.success("Đã lưu thay đổi");
-    setEditedScores(new Map());
-    setIsEditMode(false);
+    // TODO: Save changes temporarily in the future
+    toast.info("Tính năng lưu tạm sẽ được thêm sau");
   };
 
   // Handle publish
-  const handlePublish = () => {
-    // TODO: Implement API call to publish
-    toast.success("Đã xuất bản");
-    setEditedScores(new Map());
-    setIsEditMode(false);
+  const handlePublish = async () => {
+    if (
+      !selectedClassId ||
+      !selectedSubjectId ||
+      !schoolYear ||
+      !selectedClass ||
+      !selectedSubject ||
+      !scoreBookTemplate
+    ) {
+      toast.error("Vui lòng chọn lớp và môn học");
+      return;
+    }
+
+    try {
+      // Create a map of point metadata from template for quick lookup
+      const pointMetadataMap = new Map<string, ScoreBookPoint>();
+      scoreBookTemplate.pointGroupSortOrders.forEach(({ pointGroup }) => {
+        pointGroup.points.forEach((point) => {
+          const key = `${point.pointGroupCode}-${point.pointCode}`;
+          pointMetadataMap.set(key, point);
+        });
+      });
+
+      // Build studentPoints array - only include students with changes
+      const studentPoints = scores
+        .map((score) => {
+          // Get current values (edited or original)
+          const currentScoreMap = new Map<string, string>();
+
+          // Start with original scores
+          score.pointDetails.forEach((detail) => {
+            const key = `${detail.pointGroupCode}-${detail.pointCode}`;
+            currentScoreMap.set(key, detail.pointValue || "");
+          });
+
+          // Override with edited scores if any
+          if (editedScores.has(score.studentId)) {
+            const editedMap = editedScores.get(score.studentId)!;
+            editedMap.forEach((value, key) => {
+              currentScoreMap.set(key, value);
+            });
+          }
+
+          // Build pointDetails array - only include changed points
+          const pointDetails: Array<{
+            periodCode: string;
+            pointType: number;
+            pointCode: string;
+            pointDescription: string;
+            pointGroupCode: string;
+            pointValue: string;
+            pointWeight: number;
+          }> = [];
+
+          // Check all points from template to find new/modified/deleted ones
+          pointMetadataMap.forEach((pointMetadata, key) => {
+            const originalValue = scoreValueMap.get(score.studentId)?.get(key) || "";
+            const currentValue = currentScoreMap.get(key) || "";
+
+            // Only include if there's a change
+            if (originalValue !== currentValue) {
+              // For deleted points, ensure pointValue is empty string
+              const hasValue = currentValue.trim() !== "";
+              const finalValue = hasValue ? currentValue : "";
+
+              pointDetails.push({
+                periodCode: pointMetadata.batchNumberCode || "",
+                pointType: pointMetadata.pointType,
+                pointCode: pointMetadata.pointCode,
+                pointDescription: pointMetadata.description || pointMetadata.pointName,
+                pointGroupCode: pointMetadata.pointGroupCode,
+                pointValue: finalValue,
+                pointWeight: pointMetadata.pointWeight,
+              });
+            }
+          });
+
+          // Only include this student if they have at least one changed point
+          if (pointDetails.length === 0) {
+            return null;
+          }
+
+          return {
+            studentId: score.studentId,
+            studentCode: score.studentCode,
+            studentName: score.studentName,
+            pointDetails,
+            teacherComment: score.teacherComment,
+          };
+        })
+        .filter((studentPoint): studentPoint is NonNullable<typeof studentPoint> => studentPoint !== null);
+
+      // If no changes, show message and return
+      if (studentPoints.length === 0) {
+        toast.info("Không có thay đổi nào để xuất bản");
+        return;
+      }
+
+      // Build the request payload
+      const schoolLevelCode = selectedClass.schoolLevelCode || "03";
+      const schoolLevelName = selectedClass.schoolLevel || "Trung học cơ sở";
+      const publishRequest: PublishScoreRequest = {
+        scoreBookTemplateId: scoreBookTemplate.id,
+        scoreBookType: scoreBookTemplate.scoreBookType,
+        classRoomId: selectedClassId,
+        classRoomName: selectedClass.className || "",
+        schoolYearId: schoolYear.schoolYearId,
+        schoolYearName: schoolYear.code,
+        schoolLevelCode,
+        schoolLevelName,
+        gradeLevelCode: selectedClass.gradeLevelCode || "",
+        gradeLevelName: selectedClass.gradeLevelName || "",
+        subjectCode: selectedSubject.subjectCode,
+        subjectName: selectedSubject.subjectName,
+        semester: 1, // TODO: Make this configurable
+        studentPoints,
+        batchNumberId: "00000000-0000-0000-0000-000000000000",
+      };
+
+      await publishScores(publishRequest, schoolYear.code);
+      toast.success("Đã xuất bản điểm số");
+      setEditedScores(new Map());
+      setIsEditMode(false);
+
+      // Refresh scores to get updated data
+      const refreshSchoolLevelCode = selectedClass.schoolLevelCode || "03";
+      const scoresData = await fetchScores(
+        {
+          subjectCode: selectedSubject.subjectCode,
+          classRoomId: selectedClassId,
+          classRoomIds: [selectedClassId],
+          gradeLevelCode: selectedClass.gradeLevelCode || "",
+          scoreBookType: 1,
+          schoolLevelCode: refreshSchoolLevelCode,
+          schoolYearId: schoolYear.schoolYearId,
+          semester: 1,
+          batchNumberId: "00000000-0000-0000-0000-000000000000",
+        },
+        schoolYear.code
+      );
+      setScores(scoresData);
+    } catch (err) {
+      console.error("Failed to publish scores:", err);
+      const errorMessage = err instanceof Error ? err.message : "Không thể xuất bản điểm số";
+      toast.error(errorMessage);
+    }
   };
 
   return (

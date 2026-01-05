@@ -1406,6 +1406,38 @@ export interface ScoreBookTemplate {
   pointGroupSortOrders: PointGroupSortOrder[];
 }
 
+export interface PublishScoreRequest {
+  scoreBookTemplateId: number;
+  scoreBookType: number;
+  classRoomId: string;
+  classRoomName: string;
+  schoolYearId: string;
+  schoolYearName: string;
+  schoolLevelCode: string;
+  schoolLevelName: string;
+  gradeLevelCode: string;
+  gradeLevelName: string;
+  subjectCode: string;
+  subjectName: string;
+  semester: number;
+  studentPoints: Array<{
+    studentId: string;
+    studentCode: string;
+    studentName: string;
+    pointDetails: Array<{
+      periodCode: string;
+      pointType: number;
+      pointCode: string;
+      pointDescription: string;
+      pointGroupCode: string;
+      pointValue: string;
+      pointWeight: number;
+    }>;
+    teacherComment: string | null;
+  }>;
+  batchNumberId: string;
+}
+
 export async function fetchScoreBookTemplates(
   schoolLevelCode: string,
   schoolYearId: string
@@ -1436,6 +1468,27 @@ export async function fetchScoreBookTemplates(
       throw new Error(
         `Failed to fetch score book templates: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
       );
+    }
+    throw error;
+  }
+}
+
+export async function publishScores(request: PublishScoreRequest, schoolYearCode: string): Promise<void> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  try {
+    await apiClient.put("https://gateway.vtsmas.vn/api/hoc-tap/so-diem/vao-diem/them-diem", request, {
+      headers: {
+        SchoolYear: schoolYearCode,
+      },
+    });
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorText = error.response?.data || error.message;
+      throw new Error(typeof errorText === "string" ? errorText : "Không thể xuất bản điểm số");
     }
     throw error;
   }
