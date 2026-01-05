@@ -170,21 +170,23 @@ export default function ScoreBook() {
   }, [selectedClassId, selectedSubjectId, schoolYear, selectedClass, selectedSubject]);
 
   // Build table structure from score book template
+  // Sort point groups by sortOrder, and points within each group by sortOrder
   const tableStructure = (() => {
     if (!scoreBookTemplate) return { groups: [], allPoints: [] };
 
     const groups = scoreBookTemplate.pointGroupSortOrders
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .sort((a, b) => a.sortOrder - b.sortOrder) // Sort point groups by sortOrder
       .map(({ pointGroup }) => ({
         groupCode: pointGroup.pointGroupCode,
         groupName: pointGroup.pointGroupName,
         points: pointGroup.points
-          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .sort((a, b) => a.sortOrder - b.sortOrder) // Sort points within group by sortOrder
           .map((point) => ({
             pointCode: point.pointCode,
             pointName: point.pointName,
             pointGroupCode: pointGroup.pointGroupCode,
           })),
+        showGroupHeader: pointGroup.points.length > 1, // Only show group header if more than one point
       }));
 
     const allPoints: Array<{
@@ -347,22 +349,43 @@ export default function ScoreBook() {
                   <TableHead rowSpan={2} className="bg-muted/50">
                     Họ và tên
                   </TableHead>
-                  {tableStructure.groups.map(({ groupCode, groupName, points }) => (
-                    <TableHead key={`group-${groupCode}`} colSpan={points.length} className="text-center bg-muted/50">
-                      {groupName}
-                    </TableHead>
-                  ))}
+                  {tableStructure.groups.map(({ groupCode, groupName, points, showGroupHeader }) =>
+                    showGroupHeader ? (
+                      <TableHead key={`group-${groupCode}`} colSpan={points.length} className="text-center bg-muted/50">
+                        {groupName}
+                      </TableHead>
+                    ) : (
+                      // For single-point groups, show point name with rowSpan={2}
+                      points.map((point) => (
+                        <TableHead
+                          key={`single-${groupCode}-${point.pointCode}`}
+                          rowSpan={2}
+                          className="text-center bg-muted/50"
+                        >
+                          {point.pointName}
+                        </TableHead>
+                      ))
+                    )
+                  )}
                   <TableHead rowSpan={2} className="text-center bg-muted/50">
                     ĐTB
                   </TableHead>
                 </TableRow>
                 {/* Point code headers row */}
                 <TableRow>
-                  {tableStructure.allPoints.map(({ groupCode, pointCode, pointName }) => (
-                    <TableHead key={`point-${groupCode}-${pointCode}`} className="text-center bg-muted/30">
-                      {pointName}
-                    </TableHead>
-                  ))}
+                  {tableStructure.groups.map(
+                    ({ groupCode, points, showGroupHeader }) =>
+                      showGroupHeader
+                        ? points.map((point) => (
+                            <TableHead
+                              key={`point-${groupCode}-${point.pointCode}`}
+                              className="text-center bg-muted/30"
+                            >
+                              {point.pointName}
+                            </TableHead>
+                          ))
+                        : null // Single-point groups already rendered in first row with rowSpan={2}
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
