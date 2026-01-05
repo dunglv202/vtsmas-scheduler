@@ -2,20 +2,124 @@ import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import {
   fetchClassSubjects,
   fetchClasses,
   fetchScores,
   fetchScoreBookTemplates,
+  fetchStudentsByClass,
   type ClassSubjectItem,
   type ClassItem,
   type StudentScoreItem,
   type ScoreBookTemplate,
+  type StudentItem,
 } from "@/lib/api";
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useState, useMemo, useRef, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+// Component for student name with popover on hover
+interface StudentNameWithPopoverProps {
+  studentId: string;
+  studentName: string;
+  studentCode: string;
+  student: StudentItem | undefined;
+}
+
+function StudentNameWithPopover({ studentId, studentName, studentCode, student }: StudentNameWithPopoverProps) {
+  const [open, setOpen] = useState(false);
+  const openTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleOpen = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    if (!open) {
+      openTimeoutRef.current = setTimeout(() => {
+        setOpen(true);
+      }, 500); // 500ms delay to open
+    }
+  };
+
+  const handleClose = () => {
+    if (openTimeoutRef.current) {
+      clearTimeout(openTimeoutRef.current);
+      openTimeoutRef.current = null;
+    }
+    // Add delay before closing to allow moving mouse to popover
+    closeTimeoutRef.current = setTimeout(() => {
+      setOpen(false);
+    }, 100); // 100ms delay before closing
+  };
+
+  useEffect(() => {
+    return () => {
+      if (openTimeoutRef.current) {
+        clearTimeout(openTimeoutRef.current);
+      }
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Only show popover if we have student details
+  if (!student) {
+    return <span>{studentName}</span>;
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <span
+          className="cursor-pointer hover:text-primary transition-colors"
+          onMouseEnter={handleOpen}
+          onMouseLeave={handleClose}
+        >
+          {studentName}
+        </span>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-64"
+        side="right"
+        align="center"
+        sideOffset={8}
+        onMouseEnter={handleOpen}
+        onMouseLeave={handleClose}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            {student.imageSrc && (
+              <img
+                src={student.imageSrc}
+                alt={student.fullName}
+                className="w-16 h-16 rounded-full object-cover border-2 border-border"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm truncate">{student.fullName}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Mã học sinh: {student.studentCode}</p>
+            </div>
+          </div>
+          {student.identifyNumber && (
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium">CMND/CCCD:</span> {student.identifyNumber}
+              </p>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function ScoreBook() {
   const { schoolYear } = useSchoolYear();
@@ -31,12 +135,34 @@ export default function ScoreBook() {
   const [error, setError] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedScores, setEditedScores] = useState<Map<string, Map<string, string>>>(new Map());
+  const [students, setStudents] = useState<StudentItem[]>([]);
 
   // Clear subject and scores when class changes
   useEffect(() => {
     setSelectedSubjectId("");
     setScores([]);
+    setStudents([]);
   }, [selectedClassId]);
+
+  // Fetch students when class is selected
+  useEffect(() => {
+    if (!selectedClassId || !schoolYear) {
+      setStudents([]);
+      return;
+    }
+
+    const loadStudents = async () => {
+      try {
+        const studentsData = await fetchStudentsByClass(selectedClassId, schoolYear.schoolYearId);
+        setStudents(studentsData);
+      } catch (err) {
+        console.error("Failed to fetch students:", err);
+        setStudents([]);
+      }
+    };
+
+    loadStudents();
+  }, [selectedClassId, schoolYear]);
 
   // Fetch subjects only when a class is selected
   useEffect(() => {
@@ -220,6 +346,15 @@ export default function ScoreBook() {
     });
     scoreValueMap.set(score.studentId, studentScoreMap);
   });
+
+  // Create a map for quick lookup of student details by studentId
+  const studentMap = useMemo(() => {
+    const map = new Map<string, StudentItem>();
+    students.forEach((student) => {
+      map.set(student.id, student);
+    });
+    return map;
+  }, [students]);
 
   // Get the value for a score cell (either from edited scores or original scores)
   const getScoreValue = (studentId: string, groupCode: string, pointCode: string): string => {
@@ -472,7 +607,14 @@ export default function ScoreBook() {
                     return (
                       <TableRow key={score.studentId}>
                         <TableCell className="text-center">{index + 1}</TableCell>
-                        <TableCell>{score.studentName}</TableCell>
+                        <TableCell>
+                          <StudentNameWithPopover
+                            studentId={score.studentId}
+                            studentName={score.studentName}
+                            studentCode={score.studentCode}
+                            student={studentMap.get(score.studentId)}
+                          />
+                        </TableCell>
                         {tableStructure.allPoints.map(({ groupCode, pointCode }) => {
                           const value = getScoreValue(score.studentId, groupCode, pointCode);
                           return (
