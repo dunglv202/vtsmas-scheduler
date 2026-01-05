@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import {
   fetchClassSubjects,
@@ -556,98 +557,100 @@ export default function ScoreBook() {
                   )}
                 </div>
               </div>
-              <Table>
-                <TableHeader>
-                  {/* Group headers row */}
-                  <TableRow>
-                    <TableHead rowSpan={2} className="bg-muted/50">
-                      STT
-                    </TableHead>
-                    <TableHead rowSpan={2} className="bg-muted/50">
-                      Họ và tên
-                    </TableHead>
-                    {tableStructure.groups.map(({ groupCode, groupName, points, showGroupHeader }) =>
-                      showGroupHeader ? (
-                        <TableHead
-                          key={`group-${groupCode}`}
-                          colSpan={points.length}
-                          className="text-center bg-muted/50"
-                        >
-                          {groupName}
-                        </TableHead>
-                      ) : (
-                        // For single-point groups, show point name with rowSpan={2}
-                        points.map((point) => (
+              <ScrollArea className="h-[calc(100vh-300px)]">
+                <Table>
+                  <TableHeader className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm">
+                    {/* Group headers row */}
+                    <TableRow>
+                      <TableHead rowSpan={2} className="bg-muted/50">
+                        STT
+                      </TableHead>
+                      <TableHead rowSpan={2} className="bg-muted/50">
+                        Họ và tên
+                      </TableHead>
+                      {tableStructure.groups.map(({ groupCode, groupName, points, showGroupHeader }) =>
+                        showGroupHeader ? (
                           <TableHead
-                            key={`single-${groupCode}-${point.pointCode}`}
-                            rowSpan={2}
+                            key={`group-${groupCode}`}
+                            colSpan={points.length}
                             className="text-center bg-muted/50"
                           >
-                            {point.pointName}
+                            {groupName}
                           </TableHead>
-                        ))
-                      )
-                    )}
-                  </TableRow>
-                  {/* Point code headers row */}
-                  <TableRow>
-                    {tableStructure.groups.map(
-                      ({ groupCode, points, showGroupHeader }) =>
-                        showGroupHeader
-                          ? points.map((point) => (
-                              <TableHead
-                                key={`point-${groupCode}-${point.pointCode}`}
-                                className="text-center bg-muted/30"
-                              >
-                                {point.pointName}
-                              </TableHead>
-                            ))
-                          : null // Single-point groups already rendered in first row with rowSpan={2}
-                    )}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {scores.map((score: StudentScoreItem, index: number) => {
-                    return (
-                      <TableRow key={score.studentId}>
-                        <TableCell className="text-center">{index + 1}</TableCell>
-                        <TableCell>
-                          <StudentNameWithPopover
-                            studentId={score.studentId}
-                            studentName={score.studentName}
-                            studentCode={score.studentCode}
-                            student={studentMap.get(score.studentId)}
-                          />
-                        </TableCell>
-                        {tableStructure.allPoints.map(({ groupCode, pointCode }) => {
-                          const value = getScoreValue(score.studentId, groupCode, pointCode);
-                          return (
-                            <TableCell
-                              key={`${score.studentId}-${groupCode}-${pointCode}`}
-                              className="text-center p-1.5"
+                        ) : (
+                          // For single-point groups, show point name with rowSpan={2}
+                          points.map((point) => (
+                            <TableHead
+                              key={`single-${groupCode}-${point.pointCode}`}
+                              rowSpan={2}
+                              className="text-center bg-muted/50"
                             >
-                              <Input
-                                type="text"
-                                value={value}
-                                readOnly={!isEditMode}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                  handleScoreChange(score.studentId, groupCode, pointCode, e.target.value)
-                                }
-                                className={cn(
-                                  "w-12 h-8 text-center",
-                                  isEditMode
-                                    ? "border border-input bg-background focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
-                                    : "border-0 bg-transparent cursor-default shadow-none"
-                                )}
-                              />
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                              {point.pointName}
+                            </TableHead>
+                          ))
+                        )
+                      )}
+                    </TableRow>
+                    {/* Point code headers row */}
+                    <TableRow>
+                      {tableStructure.groups.map(
+                        ({ groupCode, points, showGroupHeader }) =>
+                          showGroupHeader
+                            ? points.map((point) => (
+                                <TableHead
+                                  key={`point-${groupCode}-${point.pointCode}`}
+                                  className="text-center bg-muted/30"
+                                >
+                                  {point.pointName}
+                                </TableHead>
+                              ))
+                            : null // Single-point groups already rendered in first row with rowSpan={2}
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scores.map((score: StudentScoreItem, index: number) => {
+                      return (
+                        <TableRow key={score.studentId}>
+                          <TableCell className="text-center">{index + 1}</TableCell>
+                          <TableCell>
+                            <StudentNameWithPopover
+                              studentId={score.studentId}
+                              studentName={score.studentName}
+                              studentCode={score.studentCode}
+                              student={studentMap.get(score.studentId)}
+                            />
+                          </TableCell>
+                          {tableStructure.allPoints.map(({ groupCode, pointCode }) => {
+                            const value = getScoreValue(score.studentId, groupCode, pointCode);
+                            return (
+                              <TableCell
+                                key={`${score.studentId}-${groupCode}-${pointCode}`}
+                                className="text-center p-1.5"
+                              >
+                                <Input
+                                  type="text"
+                                  value={value}
+                                  readOnly={!isEditMode}
+                                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                    handleScoreChange(score.studentId, groupCode, pointCode, e.target.value)
+                                  }
+                                  className={cn(
+                                    "w-12 h-8 text-center",
+                                    isEditMode
+                                      ? "border border-input bg-background focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
+                                      : "border-0 bg-transparent cursor-default shadow-none"
+                                  )}
+                                />
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
             </div>
           )}
         </div>
