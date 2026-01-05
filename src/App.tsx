@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import TeachingSchedule from "./pages/TeachingSchedule";
 import Classes from "./pages/Classes";
 import ClassDetails from "./pages/ClassDetails";
+import ScoreBook from "./pages/ScoreBook";
 import NotFound from "./pages/NotFound";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider } from "./components/ui/sidebar";
@@ -26,6 +27,7 @@ function App() {
               <Route path="teaching-schedule" element={<TeachingSchedule />} />
               <Route path="classes" element={<Classes />} />
               <Route path="classes/:classId" element={<ClassDetails />} />
+              <Route path="score-book" element={<ScoreBook />} />
               <Route path="*" element={<NotFound />} />
             </Route>
             <Route path="*" element={<NotFound />} />

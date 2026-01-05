@@ -1188,3 +1188,77 @@ export async function saveLessonFeedback(payload: SaveLessonFeedbackRequest): Pr
     throw error;
   }
 }
+
+export interface ClassSubjectItem {
+  id: string;
+  gradeLevelCode: string;
+  gradeLevel: string;
+  subjectCode: string;
+  subjectName: string;
+  acronymName: string;
+  classId: string;
+  className: string;
+  numberLessionSemester1: number;
+  numberLessionSemester2: number;
+  subjectType: number;
+  subjectSpecies: number;
+  isMainSubject: boolean;
+  sort: number;
+  schoolLevelCode: string;
+  schoolLevelName: string;
+  regularReviewScore: number;
+  regularReviewScoreHKII: number;
+  coefficient: number;
+  midtermAssessmentScore: number;
+  finalAssessmentScore: number;
+  specialSubject: string | null;
+  schoolYearId: string;
+  schoolYearCode: string;
+  subjectIncreaseCode: string | null;
+  subjectIncreaseName: string | null;
+  increaseBy: string | null;
+  isDisabled: boolean;
+  isTeachingAssigmentHK1: boolean;
+  isTeachingAssigmentHK2: boolean;
+}
+
+export async function fetchClassSubjects(
+  classId: string,
+  schoolYearId: string,
+  schoolYearCode: string
+): Promise<ClassSubjectItem[]> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  try {
+    const response = await apiClient.get<ClassSubjectItem[]>(
+      `https://gateway.vtsmas.vn/api/hoc-tap/lop-mon-hoc/so-danh-gia/${classId}/${schoolYearId}?semester=1`,
+      {
+        headers: {
+          SchoolYear: schoolYearCode,
+        },
+      }
+    );
+
+    // Handle 204 No Content or empty response body
+    if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+      return [];
+    }
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return [];
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch class subjects: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
+  }
+}
