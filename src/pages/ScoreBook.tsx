@@ -316,6 +316,7 @@ export default function ScoreBook() {
             pointCode: point.pointCode,
             pointName: point.pointName,
             pointGroupCode: pointGroup.pointGroupCode,
+            pointType: point.pointType,
           })),
         showGroupHeader: pointGroup.points.length > 1, // Only show group header if more than one point
       }));
@@ -324,6 +325,7 @@ export default function ScoreBook() {
       groupCode: string;
       pointCode: string;
       pointName: string;
+      pointType: number;
     }> = [];
     groups.forEach(({ groupCode, points }) => {
       points.forEach((point) => {
@@ -331,6 +333,7 @@ export default function ScoreBook() {
           groupCode,
           pointCode: point.pointCode,
           pointName: point.pointName,
+          pointType: point.pointType,
         });
       });
     });
@@ -368,6 +371,28 @@ export default function ScoreBook() {
     }
     const studentScoreMap = scoreValueMap.get(studentId);
     return studentScoreMap?.get(`${groupCode}-${pointCode}`) || "";
+  };
+
+  // Determine the change type for a score value (for highlighting)
+  const getScoreChangeType = (
+    studentId: string,
+    groupCode: string,
+    pointCode: string
+  ): "modified" | "new" | "removed" | null => {
+    if (!isEditMode) return null;
+    const originalValue = scoreValueMap.get(studentId)?.get(`${groupCode}-${pointCode}`) || "";
+    const currentValue = getScoreValue(studentId, groupCode, pointCode);
+
+    if (currentValue === originalValue) return null;
+
+    const hadValue = originalValue.trim() !== "";
+    const hasValue = currentValue.trim() !== "";
+
+    if (!hadValue && hasValue) return "new"; // Was empty, now has value (green)
+    if (hadValue && !hasValue) return "removed"; // Had value, now empty (red)
+    if (hadValue && hasValue) return "modified"; // Had value, now different value (blue)
+
+    return null;
   };
 
   // Handle score value change in edit mode
@@ -621,8 +646,10 @@ export default function ScoreBook() {
                               student={studentMap.get(score.studentId)}
                             />
                           </TableCell>
-                          {tableStructure.allPoints.map(({ groupCode, pointCode }) => {
+                          {tableStructure.allPoints.map(({ groupCode, pointCode, pointType }) => {
                             const value = getScoreValue(score.studentId, groupCode, pointCode);
+                            const changeType = getScoreChangeType(score.studentId, groupCode, pointCode);
+                            const isCommentField = pointType === 4;
                             return (
                               <TableCell
                                 key={`${score.studentId}-${groupCode}-${pointCode}`}
@@ -636,10 +663,17 @@ export default function ScoreBook() {
                                     handleScoreChange(score.studentId, groupCode, pointCode, e.target.value)
                                   }
                                   className={cn(
-                                    "w-12 h-8 text-center",
+                                    "h-8",
+                                    isCommentField ? "w-64 text-left" : "w-12 text-center",
                                     isEditMode
                                       ? "border border-input bg-background focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
-                                      : "border-0 bg-transparent cursor-default shadow-none"
+                                      : "border-0 bg-transparent cursor-default shadow-none",
+                                    changeType === "modified" &&
+                                      "bg-blue-50 dark:bg-blue-950/30 border-blue-400 dark:border-blue-600",
+                                    changeType === "new" &&
+                                      "bg-green-50 dark:bg-green-950/30 border-green-400 dark:border-green-600",
+                                    changeType === "removed" &&
+                                      "bg-red-50 dark:bg-red-950/30 border-red-400 dark:border-red-600"
                                   )}
                                 />
                               </TableCell>
