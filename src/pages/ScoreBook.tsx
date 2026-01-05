@@ -247,8 +247,8 @@ export default function ScoreBook() {
         const semester = 1; // TODO: Make this configurable
         const scoreBookType = 1;
 
-        // Find matching template
-        const matchingTemplate = templates.find((template) => {
+        // Find all matching templates
+        const matchingTemplates = templates.filter((template) => {
           const gradeMatch = template.gradeCodes.includes(selectedClass.gradeLevelCode || "");
           const subjectMatch = template.subjectCodes.includes(selectedSubject.subjectCode);
           const semesterMatch = template.semester === semester;
@@ -256,7 +256,17 @@ export default function ScoreBook() {
           return gradeMatch && subjectMatch && semesterMatch && typeMatch;
         });
 
-        setScoreBookTemplate(matchingTemplate || null);
+        // If multiple templates match, use the one with the latest appliedDate
+        let matchingTemplate = null;
+        if (matchingTemplates.length > 0) {
+          matchingTemplate = matchingTemplates.reduce((latest, current) => {
+            const latestDate = new Date(latest.appliedDate);
+            const currentDate = new Date(current.appliedDate);
+            return currentDate > latestDate ? current : latest;
+          });
+        }
+
+        setScoreBookTemplate(matchingTemplate);
       } catch (err) {
         console.error("Failed to fetch score book template:", err);
         setScoreBookTemplate(null);
