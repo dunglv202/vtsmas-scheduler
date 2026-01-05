@@ -476,19 +476,24 @@ export default function ScoreBook() {
                         {tableStructure.allPoints.map(({ groupCode, pointCode }) => {
                           const value = getScoreValue(score.studentId, groupCode, pointCode);
                           return (
-                            <TableCell key={`${score.studentId}-${groupCode}-${pointCode}`} className="text-center">
-                              {isEditMode ? (
-                                <Input
-                                  type="text"
-                                  value={value}
-                                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                    handleScoreChange(score.studentId, groupCode, pointCode, e.target.value)
-                                  }
-                                  className="w-16 text-center h-8"
-                                />
-                              ) : (
-                                value
-                              )}
+                            <TableCell
+                              key={`${score.studentId}-${groupCode}-${pointCode}`}
+                              className="text-center p-1.5"
+                            >
+                              <Input
+                                type="text"
+                                value={value}
+                                readOnly={!isEditMode}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                  handleScoreChange(score.studentId, groupCode, pointCode, e.target.value)
+                                }
+                                className={cn(
+                                  "w-12 h-8 text-center",
+                                  isEditMode
+                                    ? "border border-input bg-background focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
+                                    : "border-0 bg-transparent cursor-default shadow-none"
+                                )}
+                              />
                             </TableCell>
                           );
                         })}
