@@ -537,13 +537,17 @@ export default function ScoreBook() {
                 <div className="flex items-center gap-2">
                   {isEditMode ? (
                     <div key="edit-mode-buttons" className="flex items-center gap-2">
-                      <Button variant="destructive" onClick={handleDiscardChanges}>
-                        Hủy thay đổi
-                      </Button>
                       <Button variant="secondary" onClick={handleSaveChanges}>
                         Lưu thay đổi
                       </Button>
                       <Button onClick={handlePublish}>Xuất bản</Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleDiscardChanges}
+                        className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        Hủy thay đổi
+                      </Button>
                     </div>
                   ) : (
                     <Button key="edit-button" variant="outline" onClick={() => setIsEditMode(true)}>
