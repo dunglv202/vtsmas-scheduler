@@ -1262,3 +1262,97 @@ export async function fetchClassSubjects(
     throw error;
   }
 }
+
+export interface PointDetailHistory {
+  modifierId: string;
+  modifierUser: string;
+  source: string;
+  pointValuePrior: string;
+  pointValueAfter: string;
+  modificationTime: string;
+  totalUpdate: number;
+}
+
+export interface PointDetail {
+  pointGroupCode: string;
+  pointCode: string;
+  pointWeight: number;
+  pointValue: string;
+  pointDescription: string | null;
+  pointType: number;
+  extraProperties: unknown | null;
+  pointDetailHistorys: unknown | null;
+  pointDetailHistory: PointDetailHistory | null;
+  periodCode: string | null;
+}
+
+export interface StudentScoreItem {
+  studentId: string;
+  studentCode: string;
+  studentName: string;
+  teacherComment: string | null;
+  averagePointSemester1: number | null;
+  pointDetails: PointDetail[];
+  classId: string;
+  className: string | null;
+  gradeLevelCode: string | null;
+  gradeLevelName: string | null;
+  subjectCode: string | null;
+  pointAverageSubject: string;
+  pointYearAverageSubject: number | null;
+  semester: number;
+  id: string;
+}
+
+export interface FetchScoresRequest {
+  subjectCode: string;
+  classRoomId: string;
+  classRoomIds: string[];
+  gradeLevelCode: string;
+  scoreBookType: number;
+  schoolLevelCode: string;
+  schoolYearId: string;
+  semester: number;
+  batchNumberId: string;
+}
+
+export async function fetchScores(
+  request: FetchScoresRequest,
+  schoolYearCode: string
+): Promise<StudentScoreItem[]> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  try {
+    const response = await apiClient.post<StudentScoreItem[]>(
+      "https://gateway.vtsmas.vn/api/hoc-tap/so-diem/vao-diem/lay-diem",
+      request,
+      {
+        headers: {
+          schoolyear: schoolYearCode,
+        },
+      }
+    );
+
+    // Handle 204 No Content or empty response body
+    if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+      return [];
+    }
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return [];
+      }
+      const errorText = error.response?.data || error.message;
+      throw new Error(
+        `Failed to fetch scores: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+      );
+    }
+    throw error;
+  }
+}

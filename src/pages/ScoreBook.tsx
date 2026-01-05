@@ -1,13 +1,24 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import {
   fetchClassSubjects,
   fetchClasses,
   fetchStudentsByClass,
+  fetchScores,
   type ClassSubjectItem,
   type ClassItem,
   type StudentItem,
+  type StudentScoreItem,
+  type PointDetail,
 } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -20,9 +31,11 @@ export default function ScoreBook() {
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [students, setStudents] = useState<StudentItem[]>([]);
+  const [scores, setScores] = useState<StudentScoreItem[]>([]);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [isLoadingScores, setIsLoadingScores] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch subjects only when a class is selected
@@ -79,6 +92,9 @@ export default function ScoreBook() {
     loadClasses();
   }, [schoolYear]);
 
+  const selectedClass = classes.find((cls) => cls.id === selectedClassId);
+  const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId);
+
   // Fetch students only when both class and subject are selected
   useEffect(() => {
     if (!selectedClassId || !selectedSubjectId || !schoolYear) {
@@ -106,8 +122,74 @@ export default function ScoreBook() {
     loadStudents();
   }, [selectedClassId, selectedSubjectId, schoolYear]);
 
-  const selectedClass = classes.find((cls) => cls.id === selectedClassId);
-  const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId);
+  // Fetch scores when both class and subject are selected
+  useEffect(() => {
+    if (!selectedClassId || !selectedSubjectId || !schoolYear || !selectedClass || !selectedSubject) {
+      setScores([]);
+      return;
+    }
+
+    const loadScores = async () => {
+      setIsLoadingScores(true);
+      setError(null);
+      try {
+        const scoresData = await fetchScores(
+          {
+            subjectCode: selectedSubject.subjectCode,
+            classRoomId: selectedClassId,
+            classRoomIds: [selectedClassId],
+            gradeLevelCode: selectedClass.gradeLevelCode || "",
+            scoreBookType: 1,
+            schoolLevelCode: "03", // TODO: Get from user context or API
+            schoolYearId: schoolYear.schoolYearId,
+            semester: 1,
+            batchNumberId: "00000000-0000-0000-0000-000000000000",
+          },
+          schoolYear.code
+        );
+        setScores(scoresData);
+      } catch (err) {
+        console.error("Failed to fetch scores:", err);
+        const errorMessage = err instanceof Error ? err.message : "Không thể tải điểm số";
+        setError(errorMessage);
+        toast.error(errorMessage);
+        setScores([]);
+      } finally {
+        setIsLoadingScores(false);
+      }
+    };
+
+    loadScores();
+  }, [selectedClassId, selectedSubjectId, schoolYear, selectedClass, selectedSubject]);
+
+  // Compute column structure for scores table
+  const scoreColumns = (() => {
+    if (scores.length === 0) return { groups: [], allPointCodes: [] };
+
+    const groupMap = new Map<string, Set<string>>();
+    scores.forEach((score) => {
+      score.pointDetails.forEach((detail) => {
+        if (!groupMap.has(detail.pointGroupCode)) {
+          groupMap.set(detail.pointGroupCode, new Set());
+        }
+        groupMap.get(detail.pointGroupCode)!.add(detail.pointCode);
+      });
+    });
+
+    const groups = Array.from(groupMap.entries()).map(([groupCode, pointCodes]) => ({
+      groupCode,
+      pointCodes: Array.from(pointCodes),
+    }));
+
+    const allPointCodes: Array<{ groupCode: string; pointCode: string }> = [];
+    groups.forEach(({ groupCode, pointCodes }) => {
+      pointCodes.forEach((pointCode) => {
+        allPointCodes.push({ groupCode, pointCode });
+      });
+    });
+
+    return { groups, allPointCodes };
+  })();
 
   return (
     <div className="w-full space-y-6">
@@ -218,57 +300,86 @@ export default function ScoreBook() {
         </div>
       )}
 
-      {/* Students List - Only shown when both class and subject are selected */}
+      {/* Scores Table - Only shown when both class and subject are selected */}
       {selectedClassId && selectedSubjectId && (
         <Card>
           <CardHeader>
-            <CardTitle>Danh sách học sinh</CardTitle>
+            <CardTitle>Bảng điểm</CardTitle>
             <CardDescription>
               {selectedClass && selectedSubject
-                ? `Danh sách học sinh lớp ${selectedClass.className} - Môn ${selectedSubject.subjectName}`
-                : "Danh sách học sinh"}
+                ? `Bảng điểm lớp ${selectedClass.className} - Môn ${selectedSubject.subjectName}`
+                : "Bảng điểm"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoadingStudents ? (
+            {isLoadingScores ? (
               <div className="flex items-center justify-center py-8">
                 <Spinner className="mr-3" />
-                <span className="text-sm text-muted-foreground">Đang tải danh sách học sinh...</span>
+                <span className="text-sm text-muted-foreground">Đang tải bảng điểm...</span>
               </div>
-            ) : students.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">Không có học sinh nào trong lớp này</div>
+            ) : scores.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">Không có dữ liệu điểm</div>
             ) : (
-              <div className="space-y-2">
-                {students.map((student) => (
-                  <div
-                    key={student.id}
-                    className="p-4 rounded-lg border bg-card text-card-foreground flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex-shrink-0">
-                        {student.imageSrc ? (
-                          <img
-                            src={student.imageSrc}
-                            alt={student.fullName}
-                            className="w-12 h-12 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                            <span className="text-lg font-medium">{student.fullName.charAt(0).toUpperCase()}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium">{student.fullName}</div>
-                        <div className="text-sm text-muted-foreground">Mã học sinh: {student.studentCode}</div>
-                      </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {/* Placeholder for score input - can be extended later */}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <Table>
+                  <TableHeader>
+                    {/* Group headers row */}
+                    <TableRow>
+                      <TableHead rowSpan={2} className="bg-muted/50">
+                        STT
+                      </TableHead>
+                      <TableHead rowSpan={2} className="bg-muted/50">
+                        Họ và tên
+                      </TableHead>
+                      {scoreColumns.groups.map(({ groupCode, pointCodes }) => (
+                        <TableHead
+                          key={`group-${groupCode}`}
+                          colSpan={pointCodes.length}
+                          className="text-center bg-muted/50"
+                        >
+                          {groupCode}
+                        </TableHead>
+                      ))}
+                      <TableHead rowSpan={2} className="text-center bg-muted/50">
+                        ĐTB
+                      </TableHead>
+                    </TableRow>
+                    {/* Point code headers row */}
+                    <TableRow>
+                      {scoreColumns.allPointCodes.map(({ groupCode, pointCode }) => (
+                        <TableHead key={`point-${groupCode}-${pointCode}`} className="text-center bg-muted/30">
+                          {pointCode}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scores.map((score, index) => {
+                      // Create a map for quick lookup of point details
+                      const pointDetailMap = new Map<string, PointDetail>();
+                      score.pointDetails.forEach((detail) => {
+                        pointDetailMap.set(`${detail.pointGroupCode}-${detail.pointCode}`, detail);
+                      });
+
+                      return (
+                        <TableRow key={score.studentId}>
+                          <TableCell className="text-center">{index + 1}</TableCell>
+                          <TableCell>{score.studentName}</TableCell>
+                          {scoreColumns.allPointCodes.map(({ groupCode, pointCode }) => {
+                            const detail = pointDetailMap.get(`${groupCode}-${pointCode}`);
+                            return (
+                              <TableCell key={`${score.studentId}-${groupCode}-${pointCode}`} className="text-center">
+                                {detail?.pointValue || ""}
+                              </TableCell>
+                            );
+                          })}
+                          <TableCell className="text-center font-medium">
+                            {score.pointAverageSubject || ""}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
             )}
           </CardContent>
         </Card>
