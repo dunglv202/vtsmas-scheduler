@@ -418,6 +418,14 @@ export default function ScoreBook() {
     return studentScoreMap?.get(`${groupCode}-${pointCode}`) || "";
   };
 
+  // Helper function to normalize numeric values for comparison
+  const normalizeNumericValue = (value: string): number | null => {
+    const trimmed = value.trim();
+    if (trimmed === "") return null;
+    const num = parseFloat(trimmed);
+    return isNaN(num) ? null : num;
+  };
+
   // Determine the change type for a score value (for highlighting)
   const getScoreChangeType = (
     studentId: string,
@@ -428,6 +436,17 @@ export default function ScoreBook() {
     const originalValue = scoreValueMap.get(studentId)?.get(`${groupCode}-${pointCode}`) || "";
     const currentValue = getScoreValue(studentId, groupCode, pointCode);
 
+    // Compare numeric values if both are numbers
+    const originalNum = normalizeNumericValue(originalValue);
+    const currentNum = normalizeNumericValue(currentValue);
+
+    if (originalNum !== null && currentNum !== null) {
+      // Both are numbers, compare numerically
+      if (originalNum === currentNum) return null;
+      return "modified";
+    }
+
+    // If one is a number and the other isn't, or both are strings, compare as strings
     if (currentValue === originalValue) return null;
 
     const hadValue = originalValue.trim() !== "";
@@ -453,6 +472,28 @@ export default function ScoreBook() {
     });
   };
 
+  // Handle input blur to format numeric values to 1 decimal place
+  const handleScoreBlur = (
+    studentId: string,
+    groupCode: string,
+    pointCode: string,
+    pointType: number,
+    value: string
+  ) => {
+    // Only format numeric fields (not comment fields with pointType=4)
+    if (pointType === 4) return;
+
+    const trimmed = value.trim();
+    if (trimmed === "") return;
+
+    const num = parseFloat(trimmed);
+    if (!isNaN(num)) {
+      // Format to 1 decimal place
+      const formatted = num.toFixed(1);
+      handleScoreChange(studentId, groupCode, pointCode, formatted);
+    }
+  };
+
   // Handle paste event to fill multiple cells
   const handlePaste = (
     e: ClipboardEvent<HTMLInputElement>,
@@ -466,9 +507,20 @@ export default function ScoreBook() {
     const pastedData = e.clipboardData.getData("text");
 
     // Parse the pasted data (tab-separated, newline-separated rows)
+    // Format numeric values to 1 decimal place
     const rows = pastedData
       .split(/\r?\n/)
-      .map((row) => row.split(/\t/).map((cell) => cell.trim()))
+      .map((row) =>
+        row.split(/\t/).map((cell) => {
+          const trimmed = cell.trim();
+          if (trimmed === "") return trimmed;
+          const num = parseFloat(trimmed);
+          if (!isNaN(num)) {
+            return num.toFixed(1);
+          }
+          return trimmed;
+        })
+      )
       .filter((row) => row.some((cell) => cell.length > 0)); // Remove empty rows
 
     if (rows.length === 0) return;
@@ -985,6 +1037,9 @@ export default function ScoreBook() {
                                   readOnly={!isEditMode}
                                   onChange={(e: ChangeEvent<HTMLInputElement>) =>
                                     handleScoreChange(student.id, groupCode, pointCode, e.target.value)
+                                  }
+                                  onBlur={(e) =>
+                                    handleScoreBlur(student.id, groupCode, pointCode, pointType, e.target.value)
                                   }
                                   onPaste={(e: ClipboardEvent<HTMLInputElement>) =>
                                     handlePaste(e, student.id, groupCode, pointCode)
