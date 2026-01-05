@@ -111,113 +111,109 @@ export default function ScoreBook() {
 
   return (
     <div className="w-full space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Sổ điểm</h1>
-        <p className="text-muted-foreground">Nhập điểm cho học sinh theo lớp</p>
+      <div className="text-center">
+        <h1 className="text-3xl font-bold mb-2">Sổ điểm học sinh</h1>
+        <p className="text-muted-foreground">Nhập điểm học sinh theo lớp</p>
       </div>
 
       {/* Classes Grid */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Chọn lớp</CardTitle>
-          <CardDescription>Chọn lớp để xem danh sách môn học và học sinh</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingClasses ? (
+      <div>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold">Chọn lớp</h2>
+          <p className="text-sm text-muted-foreground">Chọn lớp để xem danh sách môn học và học sinh</p>
+        </div>
+        {isLoadingClasses ? (
+          <div className="flex items-center justify-center py-8">
+            <Spinner className="mr-3" />
+            <span className="text-sm text-muted-foreground">Đang tải danh sách lớp...</span>
+          </div>
+        ) : error && !classes.length ? (
+          <div className="text-center py-8">
+            <p className="text-destructive">{error}</p>
+          </div>
+        ) : classes.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">Không có lớp học nào</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {classes.map((cls) => (
+              <div
+                key={cls.id}
+                onClick={() => setSelectedClassId(cls.id)}
+                className={cn(
+                  "p-4 rounded-lg border bg-card text-card-foreground cursor-pointer transition-all duration-300",
+                  selectedClassId === cls.id
+                    ? "bg-primary text-primary-foreground border-primary shadow-md"
+                    : "hover:bg-primary/10 hover:border-primary/50"
+                )}
+              >
+                <div className="font-medium text-lg">{cls.className}</div>
+                {(cls.teacherName || cls.homeroomTeacherName) && (
+                  <div
+                    className={cn(
+                      "text-sm mt-1",
+                      selectedClassId === cls.id ? "text-primary-foreground/80" : "text-muted-foreground"
+                    )}
+                  >
+                    GVCN: {cls.teacherName || cls.homeroomTeacherName}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Subjects List - Only shown when a class is selected */}
+      {selectedClassId && (
+        <div>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold">Danh sách môn học</h2>
+            <p className="text-sm text-muted-foreground">
+              {selectedClass
+                ? `Danh sách các môn học có thể nhập điểm cho lớp ${selectedClass.className}`
+                : "Danh sách các môn học có thể nhập điểm"}
+            </p>
+          </div>
+          {isLoadingSubjects ? (
             <div className="flex items-center justify-center py-8">
               <Spinner className="mr-3" />
-              <span className="text-sm text-muted-foreground">Đang tải danh sách lớp...</span>
+              <span className="text-sm text-muted-foreground">Đang tải danh sách môn học...</span>
             </div>
-          ) : error && !classes.length ? (
+          ) : error && !subjects.length ? (
             <div className="text-center py-8">
               <p className="text-destructive">{error}</p>
             </div>
-          ) : classes.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">Không có lớp học nào</div>
+          ) : subjects.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">Không có môn học nào</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {classes.map((cls) => (
+              {subjects.map((subject) => (
                 <div
-                  key={cls.id}
-                  onClick={() => setSelectedClassId(cls.id)}
+                  key={subject.id}
+                  onClick={() => setSelectedSubjectId(subject.id)}
                   className={cn(
-                    "p-4 rounded-lg border bg-card text-card-foreground cursor-pointer transition-all duration-300",
-                    selectedClassId === cls.id
+                    "p-3 rounded-lg border bg-card text-card-foreground cursor-pointer transition-all duration-300",
+                    selectedSubjectId === subject.id
                       ? "bg-primary text-primary-foreground border-primary shadow-md"
                       : "hover:bg-primary/10 hover:border-primary/50"
                   )}
                 >
-                  <div className="font-medium text-lg">{cls.className}</div>
-                  {(cls.teacherName || cls.homeroomTeacherName) && (
+                  <div className="font-medium">{subject.subjectName}</div>
+                  {subject.acronymName && (
                     <div
                       className={cn(
                         "text-sm mt-1",
-                        selectedClassId === cls.id ? "text-primary-foreground/80" : "text-muted-foreground"
+                        selectedSubjectId === subject.id ? "text-primary-foreground/80" : "text-muted-foreground"
                       )}
                     >
-                      GVCN: {cls.teacherName || cls.homeroomTeacherName}
+                      {subject.acronymName}
                     </div>
                   )}
                 </div>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Subjects List - Only shown when a class is selected */}
-      {selectedClassId && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Danh sách môn học</CardTitle>
-            <CardDescription>
-              {selectedClass
-                ? `Danh sách các môn học có thể nhập điểm cho lớp ${selectedClass.className}`
-                : "Danh sách các môn học có thể nhập điểm"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingSubjects ? (
-              <div className="flex items-center justify-center py-8">
-                <Spinner className="mr-3" />
-                <span className="text-sm text-muted-foreground">Đang tải danh sách môn học...</span>
-              </div>
-            ) : error && !subjects.length ? (
-              <div className="text-center py-8">
-                <p className="text-destructive">{error}</p>
-              </div>
-            ) : subjects.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">Không có môn học nào</div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {subjects.map((subject) => (
-                  <div
-                    key={subject.id}
-                    onClick={() => setSelectedSubjectId(subject.id)}
-                    className={cn(
-                      "p-3 rounded-lg border bg-card text-card-foreground cursor-pointer transition-all duration-300",
-                      selectedSubjectId === subject.id
-                        ? "bg-primary text-primary-foreground border-primary shadow-md"
-                        : "hover:bg-primary/10 hover:border-primary/50"
-                    )}
-                  >
-                    <div className="font-medium">{subject.subjectName}</div>
-                    {subject.acronymName && (
-                      <div
-                        className={cn(
-                          "text-sm mt-1",
-                          selectedSubjectId === subject.id ? "text-primary-foreground/80" : "text-muted-foreground"
-                        )}
-                      >
-                        {subject.acronymName}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        </div>
       )}
 
       {/* Students List - Only shown when both class and subject are selected */}

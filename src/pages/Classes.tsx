@@ -1,4 +1,3 @@
-import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { fetchClasses, fetchStudentsByClass, type ClassItem } from "@/lib/api";
@@ -19,33 +18,25 @@ function ClassCard({ classItem, studentCount }: ClassCardProps) {
   const navigate = useNavigate();
 
   return (
-    <Card
+    <div
       onClick={() => navigate(`/classes/${classItem.id}`)}
       className={cn(
-        "p-4 cursor-pointer transition-all duration-300",
-        "bg-card text-card-foreground",
-        "hover:bg-primary hover:text-primary-foreground",
-        "border hover:border-primary",
-        "shadow-none",
-        "rounded-lg"
+        "p-4 rounded-lg border bg-card text-card-foreground cursor-pointer transition-all duration-300",
+        "hover:bg-primary/10 hover:border-primary/50"
       )}
     >
-      <div className="text-center space-y-1.5 text-sm">
-        <h3 className="font-semibold text-xl">{classItem.className}</h3>
-        {(classItem.teacherName || classItem.homeroomTeacherName) && (
-          <p className="text-muted-foreground hover:text-primary-foreground/80">
-            GVCN: {classItem.teacherName || classItem.homeroomTeacherName}
-          </p>
-        )}
-        {(classItem.totalStudent !== undefined ||
-          classItem.studentCount !== undefined ||
-          studentCount !== undefined) && (
-          <p className="text-muted-foreground hover:text-primary-foreground/80">
-            Số học sinh: {classItem.totalStudent ?? classItem.studentCount ?? studentCount ?? 0}
-          </p>
-        )}
-      </div>
-    </Card>
+      <div className="font-medium text-lg">{classItem.className}</div>
+      {(classItem.teacherName || classItem.homeroomTeacherName) && (
+        <div className="text-sm mt-1 text-muted-foreground">
+          GVCN: {classItem.teacherName || classItem.homeroomTeacherName}
+        </div>
+      )}
+      {(classItem.totalStudent !== undefined || classItem.studentCount !== undefined || studentCount !== undefined) && (
+        <div className="text-sm mt-1 text-muted-foreground">
+          Số học sinh: {classItem.totalStudent ?? classItem.studentCount ?? studentCount ?? 0}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -140,20 +131,21 @@ export default function Classes() {
 
   return (
     <div className="w-full">
-      <h1 className="text-3xl font-bold mb-12 text-center">Danh sách lớp học</h1>
+      <div className="mb-12">
+        <h1 className="text-3xl font-bold mb-2 text-center">Danh sách lớp học</h1>
+        <p className="text-muted-foreground text-center">Chọn lớp để xem chi tiết</p>
+      </div>
       {classes.length === 0 ? (
         <div className="text-center text-muted-foreground py-12">Không có lớp học nào</div>
       ) : (
-        <div className="flex justify-center">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {classes.map((classItem) => (
-              <ClassCard
-                key={classItem.id}
-                classItem={classItem}
-                studentCount={classItem.totalStudent ?? classItem.studentCount ?? studentCounts[classItem.id]}
-              />
-            ))}
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {classes.map((classItem) => (
+            <ClassCard
+              key={classItem.id}
+              classItem={classItem}
+              studentCount={classItem.totalStudent ?? classItem.studentCount ?? studentCounts[classItem.id]}
+            />
+          ))}
         </div>
       )}
     </div>
