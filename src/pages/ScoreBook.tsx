@@ -187,30 +187,32 @@ export default function ScoreBook() {
             <div className="text-center py-8 text-muted-foreground">Không có môn học nào</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {subjects.map((subject) => (
-                <div
-                  key={subject.id}
-                  onClick={() => setSelectedSubjectId(subject.id)}
-                  className={cn(
-                    "p-3 rounded-lg border bg-card text-card-foreground cursor-pointer transition-all duration-300",
-                    selectedSubjectId === subject.id
-                      ? "bg-primary text-primary-foreground border-primary shadow-md"
-                      : "hover:bg-primary/10 hover:border-primary/50"
-                  )}
-                >
-                  <div className="font-medium">{subject.subjectName}</div>
-                  {subject.acronymName && (
-                    <div
-                      className={cn(
-                        "text-sm mt-1",
-                        selectedSubjectId === subject.id ? "text-primary-foreground/80" : "text-muted-foreground"
-                      )}
-                    >
-                      {subject.acronymName}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {subjects
+                .filter((subject) => !subject.isDisabled)
+                .map((subject) => (
+                  <div
+                    key={subject.id}
+                    onClick={() => setSelectedSubjectId(subject.id)}
+                    className={cn(
+                      "p-3 rounded-lg border bg-card text-card-foreground cursor-pointer transition-all duration-300",
+                      selectedSubjectId === subject.id
+                        ? "bg-primary text-primary-foreground border-primary shadow-md"
+                        : "hover:bg-primary/10 hover:border-primary/50"
+                    )}
+                  >
+                    <div className="font-medium">{subject.subjectName}</div>
+                    {subject.acronymName && (
+                      <div
+                        className={cn(
+                          "text-sm mt-1",
+                          selectedSubjectId === subject.id ? "text-primary-foreground/80" : "text-muted-foreground"
+                        )}
+                      >
+                        {subject.acronymName}
+                      </div>
+                    )}
+                  </div>
+                ))}
             </div>
           )}
         </div>
