@@ -25,15 +25,10 @@ function ClassCard({ classItem, studentCount }: ClassCardProps) {
         "hover:bg-primary/10 hover:border-primary/50"
       )}
     >
-      <div className="font-medium text-lg">{classItem.className}</div>
+      <div className="font-medium text-lg">Lớp {classItem.className}</div>
       {(classItem.teacherName || classItem.homeroomTeacherName) && (
         <div className="text-sm mt-1 text-muted-foreground">
           GVCN: {classItem.teacherName || classItem.homeroomTeacherName}
-        </div>
-      )}
-      {(classItem.totalStudent !== undefined || classItem.studentCount !== undefined || studentCount !== undefined) && (
-        <div className="text-sm mt-1 text-muted-foreground">
-          Số học sinh: {classItem.totalStudent ?? classItem.studentCount ?? studentCount ?? 0}
         </div>
       )}
     </div>
