@@ -22,7 +22,7 @@ import {
   type PublishScoreRequest,
   type ScoreBookPoint,
 } from "@/lib/api";
-import { useEffect, useState, useRef, useMemo, type ChangeEvent } from "react";
+import { useEffect, useState, useRef, useMemo, type ChangeEvent, type ClipboardEvent } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Settings2 } from "lucide-react";
@@ -449,6 +449,64 @@ export default function ScoreBook() {
       }
       const studentMap = newMap.get(studentId)!;
       studentMap.set(`${groupCode}-${pointCode}`, value);
+      return newMap;
+    });
+  };
+
+  // Handle paste event to fill multiple cells
+  const handlePaste = (
+    e: ClipboardEvent<HTMLInputElement>,
+    startStudentId: string,
+    startGroupCode: string,
+    startPointCode: string
+  ) => {
+    if (!isEditMode) return;
+
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text");
+
+    // Parse the pasted data (tab-separated, newline-separated rows)
+    const rows = pastedData
+      .split(/\r?\n/)
+      .map((row) => row.split(/\t/).map((cell) => cell.trim()))
+      .filter((row) => row.some((cell) => cell.length > 0)); // Remove empty rows
+
+    if (rows.length === 0) return;
+
+    // Find the starting index in the visible columns
+    const startColumnIndex = filteredTableStructure.allPoints.findIndex(
+      (point) => point.groupCode === startGroupCode && point.pointCode === startPointCode
+    );
+
+    if (startColumnIndex === -1) return;
+
+    // Find the starting student index
+    const startStudentIndex = students.findIndex((student) => student.id === startStudentId);
+    if (startStudentIndex === -1) return;
+
+    // Update editedScores with pasted values
+    setEditedScores((prev: Map<string, Map<string, string>>) => {
+      const newMap = new Map(prev);
+
+      rows.forEach((row, rowIndex) => {
+        const studentIndex = startStudentIndex + rowIndex;
+        if (studentIndex >= students.length) return; // Skip if beyond student list
+
+        const student = students[studentIndex];
+        if (!newMap.has(student.id)) {
+          newMap.set(student.id, new Map());
+        }
+        const studentMap = newMap.get(student.id)!;
+
+        row.forEach((value, colIndex) => {
+          const pointIndex = startColumnIndex + colIndex;
+          if (pointIndex >= filteredTableStructure.allPoints.length) return; // Skip if beyond columns
+
+          const point = filteredTableStructure.allPoints[pointIndex];
+          studentMap.set(`${point.groupCode}-${point.pointCode}`, value);
+        });
+      });
+
       return newMap;
     });
   };
@@ -927,6 +985,9 @@ export default function ScoreBook() {
                                   readOnly={!isEditMode}
                                   onChange={(e: ChangeEvent<HTMLInputElement>) =>
                                     handleScoreChange(student.id, groupCode, pointCode, e.target.value)
+                                  }
+                                  onPaste={(e: ClipboardEvent<HTMLInputElement>) =>
+                                    handlePaste(e, student.id, groupCode, pointCode)
                                   }
                                   className={cn(
                                     "h-8",
