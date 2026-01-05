@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import {
   fetchClassSubjects,
@@ -20,9 +22,10 @@ import {
   type PublishScoreRequest,
   type ScoreBookPoint,
 } from "@/lib/api";
-import { useEffect, useState, useRef, type ChangeEvent } from "react";
+import { useEffect, useState, useRef, useMemo, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Settings2 } from "lucide-react";
 
 // Component for student name with popover on hover
 interface StudentNameWithPopoverProps {
@@ -140,6 +143,8 @@ export default function ScoreBook() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedScores, setEditedScores] = useState<Map<string, Map<string, string>>>(new Map());
   const [students, setStudents] = useState<StudentItem[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set());
+  const [isColumnConfigOpen, setIsColumnConfigOpen] = useState(false);
 
   // Clear subject and scores when class changes
   useEffect(() => {
@@ -354,6 +359,41 @@ export default function ScoreBook() {
 
     return { groups, allPoints };
   })();
+
+  // Initialize visible columns when table structure changes (all columns visible by default)
+  useEffect(() => {
+    if (tableStructure.allPoints.length > 0 && visibleColumns.size === 0) {
+      const allColumnKeys = new Set(tableStructure.allPoints.map((point) => `${point.groupCode}-${point.pointCode}`));
+      setVisibleColumns(allColumnKeys);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableStructure.allPoints.length]);
+
+  // Filter table structure based on visible columns
+  const filteredTableStructure = useMemo(() => {
+    if (visibleColumns.size === 0) {
+      return tableStructure;
+    }
+
+    const filteredGroups = tableStructure.groups
+      .map((group) => {
+        const filteredPoints = group.points.filter((point) =>
+          visibleColumns.has(`${point.pointGroupCode}-${point.pointCode}`)
+        );
+        return {
+          ...group,
+          points: filteredPoints,
+          showGroupHeader: filteredPoints.length > 1,
+        };
+      })
+      .filter((group) => group.points.length > 0); // Remove groups with no visible points
+
+    const filteredAllPoints = tableStructure.allPoints.filter((point) =>
+      visibleColumns.has(`${point.groupCode}-${point.pointCode}`)
+    );
+
+    return { groups: filteredGroups, allPoints: filteredAllPoints };
+  }, [tableStructure, visibleColumns]);
 
   // Create a map for quick lookup of score values by student
   const scoreValueMap = new Map<string, Map<string, string>>();
@@ -709,6 +749,87 @@ export default function ScoreBook() {
                     : "Bảng điểm"}
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Column visibility configuration */}
+                  <Popover open={isColumnConfigOpen} onOpenChange={setIsColumnConfigOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="icon" title="Cấu hình cột">
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80" align="end">
+                      <div className="space-y-4">
+                        <div className="font-semibold">Hiển thị cột</div>
+                        <ScrollArea className="h-[400px]">
+                          <div className="space-y-2 pr-4">
+                            {tableStructure.groups.map((group) => (
+                              <div key={group.groupCode} className="space-y-1">
+                                <div className="font-medium text-sm text-muted-foreground">{group.groupName}</div>
+                                {group.points.map((point) => {
+                                  const columnKey = `${point.pointGroupCode}-${point.pointCode}`;
+                                  const isVisible = visibleColumns.has(columnKey);
+                                  return (
+                                    <div
+                                      key={columnKey}
+                                      className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded cursor-pointer"
+                                      onClick={() => {
+                                        const newVisibleColumns = new Set(visibleColumns);
+                                        if (isVisible) {
+                                          newVisibleColumns.delete(columnKey);
+                                        } else {
+                                          newVisibleColumns.add(columnKey);
+                                        }
+                                        setVisibleColumns(newVisibleColumns);
+                                      }}
+                                    >
+                                      <Checkbox
+                                        id={columnKey}
+                                        checked={isVisible}
+                                        onCheckedChange={(checked: boolean) => {
+                                          const newVisibleColumns = new Set(visibleColumns);
+                                          if (checked) {
+                                            newVisibleColumns.add(columnKey);
+                                          } else {
+                                            newVisibleColumns.delete(columnKey);
+                                          }
+                                          setVisibleColumns(newVisibleColumns);
+                                        }}
+                                      />
+                                      <Label htmlFor={columnKey} className="text-sm cursor-pointer flex-1">
+                                        {point.pointName}
+                                      </Label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                        <div className="flex items-center gap-2 pt-2 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const allColumnKeys = new Set(
+                                tableStructure.allPoints.map((point) => `${point.groupCode}-${point.pointCode}`)
+                              );
+                              setVisibleColumns(allColumnKeys);
+                            }}
+                          >
+                            Chọn tất cả
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setVisibleColumns(new Set());
+                            }}
+                          >
+                            Bỏ chọn tất cả
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   {isEditMode ? (
                     <div key="edit-mode-buttons" className="flex items-center gap-2">
                       <Button variant="secondary" onClick={handleSaveChanges}>
@@ -741,7 +862,7 @@ export default function ScoreBook() {
                       <TableHead rowSpan={2} className="bg-muted/50">
                         Họ và tên
                       </TableHead>
-                      {tableStructure.groups.map(({ groupCode, groupName, points, showGroupHeader }) =>
+                      {filteredTableStructure.groups.map(({ groupCode, groupName, points, showGroupHeader }) =>
                         showGroupHeader ? (
                           <TableHead
                             key={`group-${groupCode}`}
@@ -766,7 +887,7 @@ export default function ScoreBook() {
                     </TableRow>
                     {/* Point code headers row */}
                     <TableRow>
-                      {tableStructure.groups.map(
+                      {filteredTableStructure.groups.map(
                         ({ groupCode, points, showGroupHeader }) =>
                           showGroupHeader
                             ? points.map((point) => (
@@ -794,7 +915,7 @@ export default function ScoreBook() {
                               student={student}
                             />
                           </TableCell>
-                          {tableStructure.allPoints.map(({ groupCode, pointCode, pointType }) => {
+                          {filteredTableStructure.allPoints.map(({ groupCode, pointCode, pointType }) => {
                             const value = getScoreValue(student.id, groupCode, pointCode);
                             const changeType = getScoreChangeType(student.id, groupCode, pointCode);
                             const isCommentField = pointType === 4;
