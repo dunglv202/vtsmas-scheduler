@@ -5,10 +5,11 @@ import {
   fetchClassSubjects,
   fetchClasses,
   fetchScores,
+  fetchScoreBookTemplates,
   type ClassSubjectItem,
   type ClassItem,
   type StudentScoreItem,
-  type PointDetail,
+  type ScoreBookTemplate,
 } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ export default function ScoreBook() {
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [scores, setScores] = useState<StudentScoreItem[]>([]);
+  const [scoreBookTemplate, setScoreBookTemplate] = useState<ScoreBookTemplate | null>(null);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [isLoadingScores, setIsLoadingScores] = useState(false);
@@ -88,12 +90,45 @@ export default function ScoreBook() {
   const selectedClass = classes.find((cls) => cls.id === selectedClassId);
   const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId);
 
-  // Clear scores when subject changes
+  // Clear scores and template when subject changes
   useEffect(() => {
     if (!selectedSubjectId) {
       setScores([]);
+      setScoreBookTemplate(null);
     }
   }, [selectedSubjectId]);
+
+  // Fetch score book template when both class and subject are selected
+  useEffect(() => {
+    if (!selectedClassId || !selectedSubjectId || !schoolYear || !selectedClass || !selectedSubject) {
+      setScoreBookTemplate(null);
+      return;
+    }
+
+    const loadTemplate = async () => {
+      try {
+        const templates = await fetchScoreBookTemplates("03", schoolYear.schoolYearId); // TODO: Get schoolLevelCode from user context
+        const semester = 1; // TODO: Make this configurable
+        const scoreBookType = 1;
+
+        // Find matching template
+        const matchingTemplate = templates.find((template) => {
+          const gradeMatch = template.gradeCodes.includes(selectedClass.gradeLevelCode || "");
+          const subjectMatch = template.subjectCodes.includes(selectedSubject.subjectCode);
+          const semesterMatch = template.semester === semester;
+          const typeMatch = template.scoreBookType === scoreBookType;
+          return gradeMatch && subjectMatch && semesterMatch && typeMatch;
+        });
+
+        setScoreBookTemplate(matchingTemplate || null);
+      } catch (err) {
+        console.error("Failed to fetch score book template:", err);
+        setScoreBookTemplate(null);
+      }
+    };
+
+    loadTemplate();
+  }, [selectedClassId, selectedSubjectId, schoolYear, selectedClass, selectedSubject]);
 
   // Fetch scores only when both class and subject are selected
   useEffect(() => {
@@ -134,34 +169,51 @@ export default function ScoreBook() {
     loadScores();
   }, [selectedClassId, selectedSubjectId, schoolYear, selectedClass, selectedSubject]);
 
-  // Compute column structure for scores table
-  const scoreColumns = (() => {
-    if (scores.length === 0) return { groups: [], allPointCodes: [] };
+  // Build table structure from score book template
+  const tableStructure = (() => {
+    if (!scoreBookTemplate) return { groups: [], allPoints: [] };
 
-    const groupMap = new Map<string, Set<string>>();
-    scores.forEach((score) => {
-      score.pointDetails.forEach((detail) => {
-        if (!groupMap.has(detail.pointGroupCode)) {
-          groupMap.set(detail.pointGroupCode, new Set());
-        }
-        groupMap.get(detail.pointGroupCode)!.add(detail.pointCode);
+    const groups = scoreBookTemplate.pointGroupSortOrders
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(({ pointGroup }) => ({
+        groupCode: pointGroup.pointGroupCode,
+        groupName: pointGroup.pointGroupName,
+        points: pointGroup.points
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((point) => ({
+            pointCode: point.pointCode,
+            pointName: point.pointName,
+            pointGroupCode: pointGroup.pointGroupCode,
+          })),
+      }));
+
+    const allPoints: Array<{
+      groupCode: string;
+      pointCode: string;
+      pointName: string;
+    }> = [];
+    groups.forEach(({ groupCode, points }) => {
+      points.forEach((point) => {
+        allPoints.push({
+          groupCode,
+          pointCode: point.pointCode,
+          pointName: point.pointName,
+        });
       });
     });
 
-    const groups = Array.from(groupMap.entries()).map(([groupCode, pointCodes]) => ({
-      groupCode,
-      pointCodes: Array.from(pointCodes),
-    }));
-
-    const allPointCodes: Array<{ groupCode: string; pointCode: string }> = [];
-    groups.forEach(({ groupCode, pointCodes }) => {
-      pointCodes.forEach((pointCode) => {
-        allPointCodes.push({ groupCode, pointCode });
-      });
-    });
-
-    return { groups, allPointCodes };
+    return { groups, allPoints };
   })();
+
+  // Create a map for quick lookup of score values by student
+  const scoreValueMap = new Map<string, Map<string, string>>();
+  scores.forEach((score) => {
+    const studentScoreMap = new Map<string, string>();
+    score.pointDetails.forEach((detail) => {
+      studentScoreMap.set(`${detail.pointGroupCode}-${detail.pointCode}`, detail.pointValue || "");
+    });
+    scoreValueMap.set(score.studentId, studentScoreMap);
+  });
 
   return (
     <div className="w-full space-y-6">
@@ -280,6 +332,8 @@ export default function ScoreBook() {
               <Spinner className="mr-3" />
               <span className="text-sm text-muted-foreground">Đang tải bảng điểm...</span>
             </div>
+          ) : !scoreBookTemplate ? (
+            <div className="text-center py-8 text-muted-foreground">Đang tải cấu hình bảng điểm...</div>
           ) : scores.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">Không có dữ liệu điểm</div>
           ) : (
@@ -293,13 +347,9 @@ export default function ScoreBook() {
                   <TableHead rowSpan={2} className="bg-muted/50">
                     Họ và tên
                   </TableHead>
-                  {scoreColumns.groups.map(({ groupCode, pointCodes }) => (
-                    <TableHead
-                      key={`group-${groupCode}`}
-                      colSpan={pointCodes.length}
-                      className="text-center bg-muted/50"
-                    >
-                      {groupCode}
+                  {tableStructure.groups.map(({ groupCode, groupName, points }) => (
+                    <TableHead key={`group-${groupCode}`} colSpan={points.length} className="text-center bg-muted/50">
+                      {groupName}
                     </TableHead>
                   ))}
                   <TableHead rowSpan={2} className="text-center bg-muted/50">
@@ -308,30 +358,26 @@ export default function ScoreBook() {
                 </TableRow>
                 {/* Point code headers row */}
                 <TableRow>
-                  {scoreColumns.allPointCodes.map(({ groupCode, pointCode }) => (
+                  {tableStructure.allPoints.map(({ groupCode, pointCode, pointName }) => (
                     <TableHead key={`point-${groupCode}-${pointCode}`} className="text-center bg-muted/30">
-                      {pointCode}
+                      {pointName}
                     </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {scores.map((score, index) => {
-                  // Create a map for quick lookup of point details
-                  const pointDetailMap = new Map<string, PointDetail>();
-                  score.pointDetails.forEach((detail) => {
-                    pointDetailMap.set(`${detail.pointGroupCode}-${detail.pointCode}`, detail);
-                  });
+                  const studentScoreMap = scoreValueMap.get(score.studentId) || new Map<string, string>();
 
                   return (
                     <TableRow key={score.studentId}>
                       <TableCell className="text-center">{index + 1}</TableCell>
                       <TableCell>{score.studentName}</TableCell>
-                      {scoreColumns.allPointCodes.map(({ groupCode, pointCode }) => {
-                        const detail = pointDetailMap.get(`${groupCode}-${pointCode}`);
+                      {tableStructure.allPoints.map(({ groupCode, pointCode }) => {
+                        const value = studentScoreMap.get(`${groupCode}-${pointCode}`) || "";
                         return (
                           <TableCell key={`${score.studentId}-${groupCode}-${pointCode}`} className="text-center">
-                            {detail?.pointValue || ""}
+                            {value}
                           </TableCell>
                         );
                       })}

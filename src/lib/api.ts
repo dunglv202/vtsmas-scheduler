@@ -1316,10 +1316,7 @@ export interface FetchScoresRequest {
   batchNumberId: string;
 }
 
-export async function fetchScores(
-  request: FetchScoresRequest,
-  schoolYearCode: string
-): Promise<StudentScoreItem[]> {
+export async function fetchScores(request: FetchScoresRequest, schoolYearCode: string): Promise<StudentScoreItem[]> {
   const tokens = getStoredTokens();
   if (!tokens?.access_token) {
     throw new Error("No access token found. Please login first.");
@@ -1349,8 +1346,95 @@ export async function fetchScores(
         return [];
       }
       const errorText = error.response?.data || error.message;
+      throw new Error(`Failed to fetch scores: ${error.response?.status} ${error.response?.statusText}. ${errorText}`);
+    }
+    throw error;
+  }
+}
+
+export interface ReviewPointValue {
+  pointShortText: string;
+  pointLongText: string;
+  predictText: string;
+  reviewPointCode: string | null;
+}
+
+export interface ScoreBookPoint {
+  id: number;
+  pointCode: string;
+  pointName: string;
+  pointWeight: number;
+  pointType: number;
+  pointGroupValue: string | null;
+  description: string;
+  sortOrder: number;
+  batchNumberCode: string;
+  pointGroupCode: string;
+  reviewPointValues: ReviewPointValue[];
+  scrookBookTemplateId: number;
+  semester: number | null;
+  ids: unknown | null;
+  periodCode: string | null;
+}
+
+export interface ScoreBookPointGroup {
+  id: number;
+  pointGroupCode: string;
+  pointGroupName: string;
+  scoreBookType: number;
+  description: string | null;
+  points: ScoreBookPoint[];
+  pointType: number;
+  semester: number | null;
+  classSubjectSpecies: unknown | null;
+}
+
+export interface PointGroupSortOrder {
+  sortOrder: number;
+  pointGroup: ScoreBookPointGroup;
+}
+
+export interface ScoreBookTemplate {
+  id: number;
+  scoreBookName: string | null;
+  scoreBookType: number;
+  description: string | null;
+  semester: number;
+  gradeCodes: string[];
+  subjectCodes: string[];
+  appliedDate: string;
+  pointGroupSortOrders: PointGroupSortOrder[];
+}
+
+export async function fetchScoreBookTemplates(
+  schoolLevelCode: string,
+  schoolYearId: string
+): Promise<ScoreBookTemplate[]> {
+  const tokens = getStoredTokens();
+  if (!tokens?.access_token) {
+    throw new Error("No access token found. Please login first.");
+  }
+
+  try {
+    const response = await apiClient.get<ScoreBookTemplate[]>(
+      `https://gateway.vtsmas.vn/api/cau-hinh/so-diem/mau-so-diem/lay-tat-ca-mau-so-diem/${schoolLevelCode}/${schoolYearId}`
+    );
+
+    // Handle 204 No Content or empty response body
+    if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+      return [];
+    }
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 204 as a valid response (no content)
+      if (error.response?.status === 204) {
+        return [];
+      }
+      const errorText = error.response?.data || error.message;
       throw new Error(
-        `Failed to fetch scores: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
+        `Failed to fetch score book templates: ${error.response?.status} ${error.response?.statusText}. ${errorText}`
       );
     }
     throw error;
