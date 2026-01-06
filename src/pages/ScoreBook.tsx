@@ -25,7 +25,16 @@ import {
 import { useEffect, useState, useRef, useMemo, type ChangeEvent, type ClipboardEvent } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Settings2 } from "lucide-react";
+import { Settings2, Search } from "lucide-react";
+
+// Helper function to normalize Vietnamese text (remove diacritics)
+const normalizeVietnamese = (text: string): string => {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+};
 
 // Component for student name with popover on hover
 interface StudentNameWithPopoverProps {
@@ -143,6 +152,7 @@ export default function ScoreBook() {
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set());
   const [isColumnConfigOpen, setIsColumnConfigOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Clear subject and scores when class changes
   useEffect(() => {
@@ -150,6 +160,7 @@ export default function ScoreBook() {
     setScores([]);
     setStudents([]);
     setScoreBookTemplate(null);
+    setSearchTerm("");
   }, [selectedClassId]);
 
   // Fetch subjects only when a class is selected
@@ -214,6 +225,7 @@ export default function ScoreBook() {
     if (!selectedSubjectId) {
       setScores([]);
       setScoreBookTemplate(null);
+      setSearchTerm("");
     }
   }, [selectedSubjectId]);
 
@@ -448,6 +460,19 @@ export default function ScoreBook() {
 
     return { groups: filteredGroups, allPoints: filteredAllPoints };
   }, [tableStructure, visibleColumns]);
+
+  // Filter students based on search term (supports Vietnamese diacritics)
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return students;
+    }
+
+    const normalizedSearch = normalizeVietnamese(searchTerm);
+    return students.filter((student) => {
+      const normalizedName = normalizeVietnamese(student.fullName);
+      return normalizedName.includes(normalizedSearch);
+    });
+  }, [students, searchTerm]);
 
   // Create a map for quick lookup of score values by student
   const scoreValueMap = new Map<string, Map<string, string>>();
@@ -959,10 +984,15 @@ export default function ScoreBook() {
             <div className="space-y-4">
               {/* Table caption and edit mode controls */}
               <div className="flex items-center justify-between">
-                <div className="text-lg font-semibold">
-                  {selectedClass && selectedSubject
-                    ? `Bảng điểm lớp ${selectedClass.className} - Môn ${selectedSubject.subjectName}`
-                    : "Bảng điểm"}
+                <div className="relative max-w-md flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Tìm kiếm theo tên học sinh..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Column visibility configuration */}
@@ -1119,7 +1149,7 @@ export default function ScoreBook() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {students.map((student, index) => {
+                    {filteredStudents.map((student, index) => {
                       return (
                         <TableRow key={student.id}>
                           <TableCell className="text-center">{index + 1}</TableCell>
