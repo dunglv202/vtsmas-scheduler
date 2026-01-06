@@ -30,7 +30,7 @@ const menuItems: {
     href: "/classes",
   },
   {
-    icon: <NotebookPen className="size-4" />,
+    icon: <NotebookPen className="size-4! ml-px" />,
     label: "Sổ điểm",
     href: "/score-book",
   },

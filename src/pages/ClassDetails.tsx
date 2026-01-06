@@ -16,7 +16,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { Card } from "@/components/ui/card";
 
 export default function ClassDetails() {
   const { classId } = useParams<{ classId: string }>();
@@ -391,13 +390,13 @@ export default function ClassDetails() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full">
       <div className="mb-6">
         <Button onClick={() => navigate("/classes")} variant="ghost" className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Quay lại
         </Button>
-        <h1 className="text-3xl font-bold">{classItem.className}</h1>
+        <h1 className="text-2xl font-bold">{classItem.className}</h1>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -406,142 +405,136 @@ export default function ClassDetails() {
           <TabsTrigger value="history">Lịch dạy của tôi</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="details" className="mt-6">
-          <Card className="p-6 text-sm">
-            <div className="space-y-4">
+        <TabsContent value="details" className="mt-6 space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Thông tin lớp học</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h2 className="text-base font-semibold mb-4">Thông tin lớp học</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-muted-foreground">Tên lớp</p>
-                    <p className="font-medium">{classItem.className}</p>
-                  </div>
-                  {classItem.gradeLevel && (
-                    <div>
-                      <p className="text-muted-foreground">Khối</p>
-                      <p className="font-medium">{classItem.gradeLevel}</p>
-                    </div>
-                  )}
-                  {(classItem.teacherName || classItem.homeroomTeacherName) && (
-                    <div>
-                      <p className="text-muted-foreground">Giáo viên chủ nhiệm</p>
-                      <p className="font-medium">{classItem.teacherName || classItem.homeroomTeacherName}</p>
-                    </div>
-                  )}
-                  {classItem.schoolLevel && (
-                    <div>
-                      <p className="text-muted-foreground">Cấp học</p>
-                      <p className="font-medium">{classItem.schoolLevel}</p>
-                    </div>
-                  )}
+                <p className="text-muted-foreground text-sm">Tên lớp</p>
+                <p className="font-medium">{classItem.className}</p>
+              </div>
+              {classItem.gradeLevel && (
+                <div>
+                  <p className="text-muted-foreground text-sm">Khối</p>
+                  <p className="font-medium">{classItem.gradeLevel}</p>
                 </div>
-              </div>
-
-              <div className="mt-6">
-                <h3 className="text-base font-semibold mb-4">
-                  Danh sách học sinh{" "}
-                  {!isLoadingStudents && <span className="text-muted-foreground">({activeStudents.length})</span>}
-                </h3>
-                {isLoadingStudents ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Spinner className="mr-3" />
-                    <span className="text-sm text-muted-foreground">Đang tải danh sách học sinh...</span>
-                  </div>
-                ) : students.length > 0 ? (
-                  <>
-                    {activeStudents.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {activeStudents.map((student) => renderStudentCard(student))}
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground text-sm">Không có học sinh đang học.</p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-muted-foreground">Chưa có học sinh nào</p>
-                )}
-              </div>
-
-              {!isLoadingStudents && inactiveStudents.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-base font-semibold mb-4">
-                    Đã thôi học <span className="text-muted-foreground">({inactiveStudents.length})</span>
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {inactiveStudents.map((student) => renderStudentCard(student, { showStatus: true }))}
-                  </div>
+              )}
+              {(classItem.teacherName || classItem.homeroomTeacherName) && (
+                <div>
+                  <p className="text-muted-foreground text-sm">Giáo viên chủ nhiệm</p>
+                  <p className="font-medium">{classItem.teacherName || classItem.homeroomTeacherName}</p>
+                </div>
+              )}
+              {classItem.schoolLevel && (
+                <div>
+                  <p className="text-muted-foreground text-sm">Cấp học</p>
+                  <p className="font-medium">{classItem.schoolLevel}</p>
                 </div>
               )}
             </div>
-          </Card>
+          </div>
+
+          <div>
+            <h3 className="text-xl font-semibold mb-4 mt-8">
+              Danh sách học sinh{" "}
+              {!isLoadingStudents && <span className="text-muted-foreground">({activeStudents.length})</span>}
+            </h3>
+            {isLoadingStudents ? (
+              <div className="flex items-center justify-center py-8">
+                <Spinner className="mr-3" />
+                <span className="text-sm text-muted-foreground">Đang tải danh sách học sinh...</span>
+              </div>
+            ) : students.length > 0 ? (
+              <>
+                {activeStudents.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {activeStudents.map((student) => renderStudentCard(student))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">Không có học sinh đang học.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-muted-foreground">Chưa có học sinh nào</p>
+            )}
+          </div>
+
+          {!isLoadingStudents && inactiveStudents.length > 0 && (
+            <div>
+              <h3 className="text-xl font-semibold mb-4">
+                Đã thôi học <span className="text-muted-foreground">({inactiveStudents.length})</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {inactiveStudents.map((student) => renderStudentCard(student, { showStatus: true }))}
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="history" className="mt-6">
-          <Card className="p-6 text-sm">
-            <h2 className="text-base font-semibold mb-4">Lịch sử giảng dạy của tôi</h2>
-            {isLoadingHistory ? (
-              <div className="flex items-center justify-center py-8">
-                <Spinner className="mr-3" />
-                <span className="text-sm text-muted-foreground">Đang tải lịch sử giảng dạy...</span>
-              </div>
-            ) : teachingHistory.length > 0 ? (
-              <div className="space-y-0">
-                {teachingHistory.map((detail, index) => {
-                  const dateStudy = new Date(detail.dateStudy);
-                  const weekdayName = getWeekdayName(dateStudy);
-                  const weekNumber =
-                    schoolYearDateRange && calculateWeekNumber(dateStudy, new Date(schoolYearDateRange.minDate));
+          <h2 className="text-xl font-semibold mb-4">Lịch sử giảng dạy của tôi</h2>
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <Spinner className="mr-3" />
+              <span className="text-sm text-muted-foreground">Đang tải lịch sử giảng dạy...</span>
+            </div>
+          ) : teachingHistory.length > 0 ? (
+            <div className="space-y-0">
+              {teachingHistory.map((detail, index) => {
+                const dateStudy = new Date(detail.dateStudy);
+                const weekdayName = getWeekdayName(dateStudy);
+                const weekNumber =
+                  schoolYearDateRange && calculateWeekNumber(dateStudy, new Date(schoolYearDateRange.minDate));
 
-                  return (
-                    <div key={detail.id}>
-                      {index > 0 && <Separator className="my-3" />}
-                      <div className="py-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium truncate">{detail.subjectName}</p>
-                            {weekNumber && (
-                              <span className="text-muted-foreground text-xs shrink-0">Tuần {weekNumber}</span>
-                            )}
-                          </div>
-                          <p className="text-muted-foreground text-xs mb-1">
-                            {weekdayName}, {dateStudy.toLocaleDateString("vi-VN")} - Tiết {detail.period}
-                          </p>
-                          {detail.distributeProgramName && (
-                            <p className="text-muted-foreground line-clamp-2">
-                              {detail.distributeProgramName.length > 64
-                                ? `${detail.distributeProgramName.substring(0, 64)}...`
-                                : detail.distributeProgramName}
-                            </p>
+                return (
+                  <div key={detail.id}>
+                    {index > 0 && <Separator className="my-3" />}
+                    <div className="py-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium truncate">{detail.subjectName}</p>
+                          {weekNumber && (
+                            <span className="text-muted-foreground text-xs shrink-0">Tuần {weekNumber}</span>
                           )}
                         </div>
+                        <p className="text-muted-foreground text-xs mb-1">
+                          {weekdayName}, {dateStudy.toLocaleDateString("vi-VN")} - Tiết {detail.period}
+                        </p>
+                        {detail.distributeProgramName && (
+                          <p className="text-muted-foreground line-clamp-2">
+                            {detail.distributeProgramName.length > 64
+                              ? `${detail.distributeProgramName.substring(0, 64)}...`
+                              : detail.distributeProgramName}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-                {hasMoreWeeks && (
-                  <div className="flex justify-center mt-4">
-                    <Button
-                      onClick={handleLoadMoreWeeks}
-                      variant="secondary"
-                      className="w-full"
-                      disabled={isLoadingMoreWeeks}
-                    >
-                      {isLoadingMoreWeeks ? (
-                        <>
-                          <Spinner className="mr-2 h-4 w-4" />
-                          Đang tải...
-                        </>
-                      ) : (
-                        "Tải thêm"
-                      )}
-                    </Button>
                   </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">Chưa có lịch sử giảng dạy</p>
-            )}
-          </Card>
+                );
+              })}
+              {hasMoreWeeks && (
+                <div className="flex justify-center mt-4">
+                  <Button
+                    onClick={handleLoadMoreWeeks}
+                    variant="secondary"
+                    className="w-full"
+                    disabled={isLoadingMoreWeeks}
+                  >
+                    {isLoadingMoreWeeks ? (
+                      <>
+                        <Spinner className="mr-2 h-4 w-4" />
+                        Đang tải...
+                      </>
+                    ) : (
+                      "Tải thêm"
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">Chưa có lịch sử giảng dạy</p>
+          )}
         </TabsContent>
       </Tabs>
     </div>
