@@ -320,24 +320,76 @@ export default function ScoreBook() {
 
   // Build table structure from score book template
   // Sort point groups by sortOrder, and points within each group by sortOrder
+  // Apply score limits from selected subject based on batchNumberCode (per group)
   const tableStructure = (() => {
     if (!scoreBookTemplate) return { groups: [], allPoints: [] };
 
+    // Get score limits from selected subject
+    const semester = 1; // TODO: Make this configurable
+    const getScoreLimit = (batchNumberCode: string): number | null => {
+      if (!selectedSubject) return null;
+
+      switch (batchNumberCode) {
+        case "TX":
+          // Use regularReviewScore for semester 1, regularReviewScoreHKII for semester 2
+          return semester === 1 ? selectedSubject.regularReviewScore : selectedSubject.regularReviewScoreHKII;
+        case "GHK":
+          return selectedSubject.midtermAssessmentScore;
+        case "CHK":
+          return selectedSubject.finalAssessmentScore;
+        default:
+          return null; // No limit for unknown batchNumberCode
+      }
+    };
+
+    // Process each point group separately and apply limits per group
     const groups = scoreBookTemplate.pointGroupSortOrders
       .sort((a, b) => a.sortOrder - b.sortOrder) // Sort point groups by sortOrder
-      .map(({ pointGroup }) => ({
-        groupCode: pointGroup.pointGroupCode,
-        groupName: pointGroup.pointGroupName,
-        points: pointGroup.points
-          .sort((a, b) => a.sortOrder - b.sortOrder) // Sort points within group by sortOrder
+      .map(({ pointGroup }) => {
+        // Group points within this group by batchNumberCode
+        const pointsByBatchNumber = new Map<string, ScoreBookPoint[]>();
+
+        pointGroup.points.forEach((point) => {
+          const batchCode = point.batchNumberCode;
+          if (!pointsByBatchNumber.has(batchCode)) {
+            pointsByBatchNumber.set(batchCode, []);
+          }
+          pointsByBatchNumber.get(batchCode)!.push(point);
+        });
+
+        // Apply limits per batchNumberCode within this group
+        const limitedPoints: ScoreBookPoint[] = [];
+        pointsByBatchNumber.forEach((points, batchCode) => {
+          const limit = getScoreLimit(batchCode);
+          const sortedPoints = points.sort((a, b) => a.sortOrder - b.sortOrder);
+
+          if (limit !== null && limit > 0) {
+            // Limit to the specified number for this batchNumberCode within this group
+            limitedPoints.push(...sortedPoints.slice(0, limit));
+          } else {
+            // No limit, include all points for this batchNumberCode
+            limitedPoints.push(...sortedPoints);
+          }
+        });
+
+        // Sort all limited points by sortOrder to maintain order
+        const finalPoints = limitedPoints
+          .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((point) => ({
             pointCode: point.pointCode,
             pointName: point.pointName,
             pointGroupCode: pointGroup.pointGroupCode,
             pointType: point.pointType,
-          })),
-        showGroupHeader: pointGroup.points.length > 1, // Only show group header if more than one point
-      }));
+          }));
+
+        return {
+          groupCode: pointGroup.pointGroupCode,
+          groupName: pointGroup.pointGroupName,
+          points: finalPoints,
+          showGroupHeader: finalPoints.length > 1, // Only show group header if more than one point
+        };
+      })
+      .filter((group) => group.points.length > 0); // Remove groups with no points after filtering
 
     const allPoints: Array<{
       groupCode: string;
