@@ -14,7 +14,7 @@ interface ClassCardProps {
   studentCount: number | undefined;
 }
 
-function ClassCard({ classItem, studentCount }: ClassCardProps) {
+function ClassCard({ classItem }: ClassCardProps) {
   const navigate = useNavigate();
 
   return (

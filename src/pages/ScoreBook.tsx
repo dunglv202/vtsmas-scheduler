@@ -29,13 +29,11 @@ import { Settings2 } from "lucide-react";
 
 // Component for student name with popover on hover
 interface StudentNameWithPopoverProps {
-  studentId: string;
   studentName: string;
-  studentCode: string;
   student: StudentItem | undefined;
 }
 
-function StudentNameWithPopover({ studentId, studentName, studentCode, student }: StudentNameWithPopoverProps) {
+function StudentNameWithPopover({ studentName, student }: StudentNameWithPopoverProps) {
   const [open, setOpen] = useState(false);
   const openTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -691,9 +689,9 @@ export default function ScoreBook() {
         schoolLevelCode,
         schoolLevelName,
         gradeLevelCode: selectedClass.gradeLevelCode || "",
-        gradeLevelName: selectedClass.gradeLevelName || "",
+        gradeLevelName: selectedClass.gradeLevel || "",
         subjectCode: selectedSubject.subjectCode,
-        subjectName: selectedSubject.subjectName,
+        subjectName: selectedSubject.subjectName || "",
         semester: 1, // TODO: Make this configurable
         studentPoints,
         batchNumberId: "00000000-0000-0000-0000-000000000000",
@@ -1018,12 +1016,7 @@ export default function ScoreBook() {
                         <TableRow key={student.id}>
                           <TableCell className="text-center">{index + 1}</TableCell>
                           <TableCell>
-                            <StudentNameWithPopover
-                              studentId={student.id}
-                              studentName={student.fullName}
-                              studentCode={student.studentCode}
-                              student={student}
-                            />
+                            <StudentNameWithPopover studentName={student.fullName} student={student} />
                           </TableCell>
                           {filteredTableStructure.allPoints.map(({ groupCode, pointCode, pointType }) => {
                             const value = getScoreValue(student.id, groupCode, pointCode);
