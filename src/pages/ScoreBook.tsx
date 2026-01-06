@@ -380,6 +380,7 @@ export default function ScoreBook() {
             pointName: point.pointName,
             pointGroupCode: pointGroup.pointGroupCode,
             pointType: point.pointType,
+            pointWeight: point.pointWeight,
           }));
 
         return {
@@ -396,6 +397,7 @@ export default function ScoreBook() {
       pointCode: string;
       pointName: string;
       pointType: number;
+      pointWeight: number;
     }> = [];
     groups.forEach(({ groupCode, points }) => {
       points.forEach((point) => {
@@ -404,6 +406,7 @@ export default function ScoreBook() {
           pointCode: point.pointCode,
           pointName: point.pointName,
           pointType: point.pointType,
+          pointWeight: point.pointWeight,
         });
       });
     });
@@ -456,8 +459,8 @@ export default function ScoreBook() {
     scoreValueMap.set(score.studentId, studentScoreMap);
   });
 
-  // Get the value for a score cell (either from edited scores or original scores)
-  const getScoreValue = (studentId: string, groupCode: string, pointCode: string): string => {
+  // Get raw score value without calculating averages (used internally)
+  const getRawScoreValue = (studentId: string, groupCode: string, pointCode: string): string => {
     if (isEditMode && editedScores.has(studentId)) {
       const editedMap = editedScores.get(studentId)!;
       const key = `${groupCode}-${pointCode}`;
@@ -467,6 +470,55 @@ export default function ScoreBook() {
     }
     const studentScoreMap = scoreValueMap.get(studentId);
     return studentScoreMap?.get(`${groupCode}-${pointCode}`) || "";
+  };
+
+  // Calculate weighted average for pointType=2 based on ALL base scores across all groups
+  // Base scores use pointType=1, so we aggregate pointType=1 here
+  const calculateAverageScore = (studentId: string): string => {
+    if (!scoreBookTemplate || !tableStructure || tableStructure.allPoints.length === 0) {
+      return "";
+    }
+
+    // Get all base points (pointType=1) from the table structure (which includes filtered/limited points)
+    const basePoints = tableStructure.allPoints.filter(
+      (point) => point.pointType === 1 && point.pointWeight !== undefined && point.pointWeight > 0
+    );
+
+    if (basePoints.length === 0) {
+      return "";
+    }
+
+    // Get current score values (edited or original) for all base points
+    let totalWeightedSum = 0;
+    let totalWeight = 0;
+
+    basePoints.forEach((point) => {
+      const value = getRawScoreValue(studentId, point.groupCode, point.pointCode);
+      const numValue = normalizeNumericValue(value);
+      if (numValue !== null && point.pointWeight > 0) {
+        totalWeightedSum += numValue * point.pointWeight;
+        totalWeight += point.pointWeight;
+      }
+    });
+
+    if (totalWeight === 0) {
+      return "";
+    }
+
+    const average = totalWeightedSum / totalWeight;
+    // Round to 1 decimal place and format with 1 digit after decimal point
+    return average.toFixed(1);
+  };
+
+  // Get the value for a score cell (either from edited scores or original scores)
+  // For pointType=2, calculate weighted average
+  const getScoreValue = (studentId: string, groupCode: string, pointCode: string, pointType?: number): string => {
+    // If pointType=2, calculate average
+    if (pointType === 2) {
+      return calculateAverageScore(studentId);
+    }
+
+    return getRawScoreValue(studentId, groupCode, pointCode);
   };
 
   // Helper function to normalize numeric values for comparison
@@ -481,11 +533,14 @@ export default function ScoreBook() {
   const getScoreChangeType = (
     studentId: string,
     groupCode: string,
-    pointCode: string
+    pointCode: string,
+    pointType?: number
   ): "modified" | "new" | "removed" | null => {
+    // pointType=2 is calculated, so no change highlighting
+    if (pointType === 2) return null;
     if (!isEditMode) return null;
     const originalValue = scoreValueMap.get(studentId)?.get(`${groupCode}-${pointCode}`) || "";
-    const currentValue = getScoreValue(studentId, groupCode, pointCode);
+    const currentValue = getScoreValue(studentId, groupCode, pointCode, pointType);
 
     // Compare numeric values if both are numbers
     const originalNum = normalizeNumericValue(originalValue);
@@ -1072,15 +1127,16 @@ export default function ScoreBook() {
                             <StudentNameWithPopover studentName={student.fullName} student={student} />
                           </TableCell>
                           {filteredTableStructure.allPoints.map(({ groupCode, pointCode, pointType }) => {
-                            const value = getScoreValue(student.id, groupCode, pointCode);
-                            const changeType = getScoreChangeType(student.id, groupCode, pointCode);
+                            const value = getScoreValue(student.id, groupCode, pointCode, pointType);
+                            const changeType = getScoreChangeType(student.id, groupCode, pointCode, pointType);
                             const isCommentField = pointType === 4;
+                            const isAverageField = pointType === 2;
                             return (
                               <TableCell key={`${student.id}-${groupCode}-${pointCode}`} className="text-center p-1.5">
                                 <Input
                                   type="text"
                                   value={value}
-                                  readOnly={!isEditMode}
+                                  readOnly={!isEditMode || isAverageField}
                                   onChange={(e: ChangeEvent<HTMLInputElement>) =>
                                     handleScoreChange(student.id, groupCode, pointCode, e.target.value)
                                   }
@@ -1093,7 +1149,8 @@ export default function ScoreBook() {
                                   className={cn(
                                     "h-8",
                                     isCommentField ? "w-64 text-left" : "w-12 text-center",
-                                    isEditMode
+                                    isAverageField && "font-bold",
+                                    isEditMode && !isAverageField
                                       ? "border border-input bg-background focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
                                       : "border-0 bg-transparent cursor-default shadow-none",
                                     changeType === "modified" &&
