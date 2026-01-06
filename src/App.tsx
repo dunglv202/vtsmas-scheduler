@@ -13,6 +13,8 @@ import NotFound from "./pages/NotFound";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider } from "./components/ui/sidebar";
 import { AppSidebar } from "./components/AppSidebar";
+import { MobileSidebar } from "./components/MobileSidebar";
+import { MobileMenuButton } from "./components/MobileMenuButton";
 import { Toaster } from "./components/ui/sonner";
 
 function App() {
@@ -44,6 +46,8 @@ function Layout() {
     <SidebarProvider>
       <CommandMenu />
       <AppSidebar />
+      <MobileSidebar />
+      <MobileMenuButton />
       <ScrollArea className="h-screen flex-1">
         <div className="min-h-screen">
           <main className="p-12">

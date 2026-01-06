@@ -6,7 +6,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { clearStoredTokens } from "@/lib/auth";
@@ -55,42 +54,40 @@ const menuItems: {
   },
 ];
 
-export function AppSidebar() {
+export function MobileSidebar() {
   const isMobile = useIsMobile();
 
-  // Only render on desktop
-  if (isMobile) {
+  if (!isMobile) {
     return null;
   }
 
   return (
-    <Sidebar collapsible="none" className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r h-screen">
-      <SidebarHeader>
-        <SidebarTrigger className="px-4" />
-      </SidebarHeader>
+    <Sidebar collapsible="offcanvas" className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r h-screen">
+      <SidebarHeader></SidebarHeader>
       <SidebarContent>
         <SidebarMenu className="space-y-2 mt-2">
           {menuItems.map((item, idx) => (
             <SidebarMenuItem key={idx}>
               {!!item.href ? (
-                <Link to={item.href!}>
-                  <SidebarMenuButton tooltip={item.label} className="px-3.5">
+                <Link to={item.href!} className="block">
+                  <SidebarMenuButton className="px-3.5 w-full justify-start gap-3">
                     {item.icon}
                     <span>{item.label}</span>
                   </SidebarMenuButton>
                 </Link>
               ) : (
-                <SidebarMenuButton tooltip={item.label} className="px-3.5" onClick={item.action}>
-                  {item.icon}
-                  <span>{item.label}</span>
-                </SidebarMenuButton>
+                <div onClick={item.action} className="cursor-pointer">
+                  <SidebarMenuButton className="px-3.5 w-full justify-start gap-3">
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </SidebarMenuButton>
+                </div>
               )}
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter></SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 }
