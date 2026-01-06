@@ -1148,7 +1148,7 @@ export default function ScoreBook() {
                                   }
                                   className={cn(
                                     "h-8",
-                                    isCommentField ? "w-64 text-left" : "w-12 text-center",
+                                    isCommentField ? "w-52 text-left" : "w-14 text-center",
                                     isAverageField && "font-bold",
                                     isEditMode && !isAverageField
                                       ? "border border-input bg-background focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
