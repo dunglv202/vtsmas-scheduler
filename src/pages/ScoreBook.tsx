@@ -264,9 +264,10 @@ export default function ScoreBook() {
           const orderB = b.sortOrderByClass ?? b.sortOrder ?? 0;
           return orderA - orderB;
         });
+        const isActive = (student: StudentItem) => student.status === "Đang học" || student.statusCode === "01";
 
         setScoreBookTemplate(matchingTemplate);
-        setStudents(sortedStudents);
+        setStudents(sortedStudents.filter(isActive));
       } catch (err) {
         console.error("Failed to fetch template or students:", err);
         setScoreBookTemplate(null);
