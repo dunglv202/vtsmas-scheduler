@@ -56,9 +56,7 @@ export default function ScoreBook() {
   };
 
   const handleSelectAll = () => {
-    const allColumnKeys = new Set(
-      tableStructure.allPoints.map((point) => `${point.groupCode}-${point.pointCode}`)
-    );
+    const allColumnKeys = new Set(tableStructure.allPoints.map((point) => `${point.groupCode}-${point.pointCode}`));
     setVisibleColumns(allColumnKeys);
   };
 
@@ -107,7 +105,7 @@ export default function ScoreBook() {
           ) : (
             <div className="space-y-4">
               {/* Table caption and edit mode controls */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="relative max-w-md flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input

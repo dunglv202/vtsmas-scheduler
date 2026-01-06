@@ -50,7 +50,7 @@ function Layout() {
       <MobileMenuButton />
       <ScrollArea className="h-screen flex-1">
         <div className="min-h-screen">
-          <main className="p-12">
+          <main className="p-4 md:p-12">
             <Outlet />
           </main>
           <Toaster position="top-center" />
