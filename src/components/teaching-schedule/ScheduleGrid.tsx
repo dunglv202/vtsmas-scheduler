@@ -70,7 +70,7 @@ export function ScheduleGrid({
   });
 
   return (
-    <div className="grid grid-cols-8 w-full">
+    <div className="grid grid-cols-8 w-full min-w-200">
       <div className="bg-muted p-3 font-semibold text-center border-r border-b border-border sticky top-0 z-10">
         Thời gian
       </div>
@@ -147,4 +147,3 @@ export function ScheduleGrid({
     </div>
   );
 }
-

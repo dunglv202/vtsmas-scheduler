@@ -3,7 +3,7 @@ import { WeekNumberCalendar } from "@/components/WeekNumberCalendar";
 import { ScheduleGrid } from "@/components/teaching-schedule/ScheduleGrid";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { useEmployee } from "@/contexts/EmployeeContext";
 import {
@@ -489,13 +489,16 @@ export default function TeachingSchedule() {
         {scheduleError && <div className="text-center text-sm text-destructive mt-2">Lỗi: {scheduleError}</div>}
       </div>
 
-      <ScheduleGrid
-        weekDates={weekDates}
-        schedule={schedule}
-        selectedClasses={selectedClasses}
-        isLoadingSchedule={isLoadingSchedule}
-        onCellClick={handleCellClick}
-      />
+      <ScrollArea className="w-[calc(100vw-2rem)] md:w-full h-[calc(100vh-200px)]">
+        <ScheduleGrid
+          weekDates={weekDates}
+          schedule={schedule}
+          selectedClasses={selectedClasses}
+          isLoadingSchedule={isLoadingSchedule}
+          onCellClick={handleCellClick}
+        />
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
 
       {/* Dialog for editing lesson */}
       <LessonDialog
