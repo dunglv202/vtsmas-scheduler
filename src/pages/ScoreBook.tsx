@@ -16,7 +16,6 @@ export default function ScoreBook() {
     selectedClassId,
     selectedSubjectId,
     selectedClass,
-    selectedSubject,
     filteredStudents,
     scoreBookTemplate,
     tableStructure,

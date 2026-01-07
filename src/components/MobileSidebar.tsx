@@ -6,7 +6,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { clearStoredTokens } from "@/lib/auth";
 import { Bell, Calendar, GraduationCap, LogOut, NotebookPen, User } from "lucide-react";
