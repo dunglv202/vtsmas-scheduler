@@ -1,8 +1,6 @@
 import { LessonDialog, type LessonInfo, type ScheduleCell } from "@/components/LessonDialog";
-import { WeekNumberCalendar } from "@/components/WeekNumberCalendar";
 import { ScheduleGrid } from "@/components/teaching-schedule/ScheduleGrid";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScheduleToolbar } from "@/components/teaching-schedule/ScheduleToolbar";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useSchoolYear } from "@/contexts/SchoolYearContext";
 import { useEmployee } from "@/contexts/EmployeeContext";
@@ -14,7 +12,6 @@ import {
   type TeachingScheduleDetail,
   type ApprovalHistoryItem,
 } from "@/lib/api";
-import { Filter, RefreshCw } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 
@@ -51,37 +48,6 @@ function getWeekDatesFromDate(date: Date): Date[] {
 // Get current week's dates (Monday to Sunday)
 function getCurrentWeekDates(): Date[] {
   return getWeekDatesFromDate(new Date());
-}
-
-// Format week range for display (e.g., "1-7 Thg 9, 2025" or "28 Thg 8 - 3 Thg 9, 2025")
-function formatWeekRange(weekDates: Date[]): string {
-  const monday = weekDates[0];
-  const sunday = weekDates[6];
-  const months = [
-    "Thg 1",
-    "Thg 2",
-    "Thg 3",
-    "Thg 4",
-    "Thg 5",
-    "Thg 6",
-    "Thg 7",
-    "Thg 8",
-    "Thg 9",
-    "Thg 10",
-    "Thg 11",
-    "Thg 12",
-  ];
-
-  // If both dates are in the same month, use compact format: "1-7 Thg 9, 2025"
-  if (monday.getMonth() === sunday.getMonth() && monday.getFullYear() === sunday.getFullYear()) {
-    return `${monday.getDate()}-${sunday.getDate()} ${months[sunday.getMonth()]}, ${sunday.getFullYear()}`;
-  }
-
-  // Otherwise, use full format: "28 Thg 8 - 3 Thg 9, 2025"
-  const mondayStr = `${monday.getDate()} ${months[monday.getMonth()]}`;
-  const sundayStr = `${sunday.getDate()} ${months[sunday.getMonth()]}, ${sunday.getFullYear()}`;
-
-  return `${mondayStr} - ${sundayStr}`;
 }
 
 // Format date as YYYY-MM-DD for API
@@ -374,120 +340,26 @@ export default function TeachingSchedule() {
 
   return (
     <div className="w-full">
-      <div className="p-4 mb-4">
-        <h1 className="text-3xl font-bold text-center mb-4">Thời khóa biểu giảng dạy</h1>
-
-        {/* Filters and Week Selector */}
-        <div className="flex items-center justify-center gap-4">
-          {/* Class Filter */}
-          <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2 w-40 justify-center relative">
-                <Filter className="h-4 w-4 shrink-0" />
-                <span className="truncate">Lọc theo lớp</span>
-                {selectedClasses.size > 0 && (
-                  <span className="bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs shrink-0">
-                    {selectedClasses.size}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2" align="start">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-sm">Lọc theo lớp</h4>
-                  {selectedClasses.size > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearClassFilter} className="h-7 text-xs">
-                      Xóa
-                    </Button>
-                  )}
-                </div>
-                {isLoadingClasses ? (
-                  <div className="text-sm text-muted-foreground py-2">Đang tải danh sách lớp...</div>
-                ) : (
-                  <ScrollArea className="h-64">
-                    <div className="space-y-1 pr-4">
-                      {classes.map((classItem) => {
-                        const isSelected = selectedClasses.has(classItem.className);
-                        return (
-                          <button
-                            key={classItem.id}
-                            type="button"
-                            onClick={() => toggleClassFilter(classItem.className)}
-                            className={`
-                            w-full text-left px-3 py-2 rounded-md text-sm transition-colors
-                            ${
-                              isSelected
-                                ? "bg-accent text-accent-foreground font-medium"
-                                : "hover:bg-accent text-foreground"
-                            }
-                          `}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`
-                                w-4 h-4 border-2 rounded flex items-center justify-center
-                                ${isSelected ? "bg-primary border-primary" : "border-border"}
-                              `}
-                              >
-                                {isSelected && (
-                                  <svg
-                                    className="w-3 h-3 text-primary-foreground"
-                                    fill="none"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </div>
-                              <span>{classItem.className}</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Week Selector */}
-          <Button onClick={handlePreviousWeek} variant="outline" aria-label="Tuần trước">
-            ← Tuần trước
-          </Button>
-
-          <div className="flex items-center gap-2">
-            <WeekNumberCalendar
-              selectedDate={weekDates[0]}
-              onDateSelect={handleDateSelect}
-              month={calendarMonth}
-              onMonthChange={setCalendarMonth}
-              isOpen={isCalendarOpen}
-              onOpenChange={setIsCalendarOpen}
-              triggerLabel={formatWeekRange(weekDates)}
-            />
-          </div>
-
-          <Button onClick={handleNextWeek} variant="outline" aria-label="Tuần sau">
-            Tuần sau →
-          </Button>
-
-          <Button onClick={handleToday} variant="default">
-            Hôm nay
-          </Button>
-
-          <Button onClick={handleReload} variant="outline" aria-label="Tải lại thời khóa biểu">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {scheduleError && <div className="text-center text-sm text-destructive mt-2">Lỗi: {scheduleError}</div>}
-      </div>
+      <ScheduleToolbar
+        weekDates={weekDates}
+        selectedClasses={selectedClasses}
+        classes={classes}
+        isLoadingClasses={isLoadingClasses}
+        isFilterOpen={isFilterOpen}
+        setIsFilterOpen={setIsFilterOpen}
+        calendarMonth={calendarMonth}
+        setCalendarMonth={setCalendarMonth}
+        isCalendarOpen={isCalendarOpen}
+        setIsCalendarOpen={setIsCalendarOpen}
+        scheduleError={scheduleError}
+        onPreviousWeek={handlePreviousWeek}
+        onNextWeek={handleNextWeek}
+        onToday={handleToday}
+        onReload={handleReload}
+        onDateSelect={handleDateSelect}
+        onToggleClassFilter={toggleClassFilter}
+        onClearClassFilter={clearClassFilter}
+      />
 
       <ScrollArea className="w-[calc(100vw-2rem)] md:w-full h-[calc(100vh-200px)]">
         <ScheduleGrid

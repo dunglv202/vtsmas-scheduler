@@ -113,7 +113,10 @@ export function WeekNumberCalendar({
   return (
     <Popover open={isOpen} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className={`w-[280px] justify-start text-left font-normal ${className || ""}`}>
+        <Button
+          variant="outline"
+          className={`w-full md:w-[280px] justify-start text-left font-normal ${className || ""}`}
+        >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {displayLabel}
         </Button>
