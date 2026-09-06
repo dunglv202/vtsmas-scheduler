@@ -4,9 +4,11 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { fetchSchoolYears, type SchoolYear } from "@/lib/api";
 import { TOKEN_STORAGE_KEY } from "@/lib/auth";
 
-// Parse a yyyy-MM-dd date string into a local-midnight Date (avoid UTC drift).
+// Parse a yyyy-MM-dd (optionally yyyy-MM-ddTHH:mm:ss) date string into a
+// local-midnight Date. The API returns timestamps even for date-only fields,
+// so only the first 10 chars (the date part) are used.
 function parseISODate(value: string): Date {
-  const [year, month, day] = value.split("-").map(Number);
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
   return new Date(year, month - 1, day);
 }
 
