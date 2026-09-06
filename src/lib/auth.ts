@@ -46,11 +46,9 @@ export async function login(username: string, password: string): Promise<TokenRe
   );
   formData.append("username", username);
   formData.append("password", password);
-  formData.append("client_id", "backend-admin-app-client");
-  formData.append("client_secret", "1q2w3e*");
 
   try {
-    const response = await axios.post<TokenResponse>("https://sso.vtsmas.vn/connect/token", formData.toString(), {
+    const response = await axios.post<TokenResponse>("/api/auth/connect/token", formData.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
@@ -77,11 +75,9 @@ export async function refreshToken(): Promise<TokenResponse> {
   const formData = new URLSearchParams();
   formData.append("grant_type", "refresh_token");
   formData.append("refresh_token", tokens.refresh_token);
-  formData.append("client_id", "backend-admin-app-client");
-  formData.append("client_secret", "1q2w3e*");
 
   try {
-    const response = await axios.post<TokenResponse>("https://sso.vtsmas.vn/connect/token", formData.toString(), {
+    const response = await axios.post<TokenResponse>("/api/auth/connect/token", formData.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },

@@ -20,4 +20,11 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Cloudflare Pages Functions run in a server runtime, so no browser globals.
+    files: ['functions/**/*.{ts,js}'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])

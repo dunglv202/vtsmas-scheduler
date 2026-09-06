@@ -1,6 +1,28 @@
-# React + TypeScript + Vite
+# VTSMAS Lesson Scheduler
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React (Vite) + TypeScript SPA, deployed to **Cloudflare Pages** (static build + Pages Functions in the `functions/` directory). One deployment serves both the SPA and the server-side proxy.
+
+## Architecture
+
+The browser only ever talks to the app's own origin — no CORS, and upstream hosts are not exposed:
+
+- **Dev:** the Vite dev server mirrors the production proxy (`vite.config.ts` `devApiProxy`) — `/api/*` → `gateway.vtsmas.vn`, `/api/auth/*` → `sso.vtsmas.vn`.
+- **Prod:** `functions/api/[[path]].ts` is a Cloudflare Pages Function (a Worker) doing the same server-side, injecting the SSO `client_id`/`client_secret` before forwarding.
+- **SPA fallback:** `public/_redirects` rewrites unknown routes (`/login`, `/teaching-schedule`, …) to `/index.html`.
+
+### Required Cloudflare Pages environment variables
+
+Set in the Pages project → Settings → Environment Variables.
+
+| Variable            | Example                        |
+| ------------------- | ------------------------------ |
+| `GATEWAY_URL`       | `https://gateway.vtsmas.vn`    |
+| `SSO_URL`           | `https://sso.vtsmas.vn`        |
+| `SSO_CLIENT_ID`     | `backend-admin-app-client`     |
+| `SSO_CLIENT_SECRET` | `1q2w3e*` (as configured)      |
+| `ALLOWED_ORIGINS`   | `https://your-app.pages.dev` *(optional — comma-separated; recommend setting so the proxy can't be used as an open relay)* |
+
+All vars fall back to the current values in code if unset, so a deploy works out of the box; set them to harden.
 
 Currently, two official plugins are available:
 

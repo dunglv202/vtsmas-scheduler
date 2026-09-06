@@ -176,7 +176,7 @@ export async function fetchSchoolYears(): Promise<SchoolYear[]> {
 
   try {
     const response = await apiClient.get<SchoolYear[]>(
-      "https://gateway.vtsmas.vn/api/danh-muc-truong/nam-hoc-nha-truong/tat-ca"
+      "/api/danh-muc-truong/nam-hoc-nha-truong/tat-ca"
     );
 
     if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
@@ -208,7 +208,7 @@ export async function fetchSchoolYearDateRange(schoolYearId: string): Promise<Sc
 
   try {
     const response = await apiClient.get<SchoolYearDateRange>(
-      `https://gateway.vtsmas.vn/api/can-bo/cau-hinh-tuan/ngay-lon-nho-trong-nam/${schoolYearId}`,
+      `/api/can-bo/cau-hinh-tuan/ngay-lon-nho-trong-nam/${schoolYearId}`,
       {
         headers: {
           Accept: "application/json, text/plain, */*",
@@ -260,7 +260,7 @@ export async function fetchSubjects(schoolLevelCode: string = "03"): Promise<Sub
 
   try {
     const response = await apiClient.get<SubjectItem[]>(
-      `https://gateway.vtsmas.vn/api/cau-hinh/danh-muc/loai-danh-muc/DM_MON_HOC/${schoolLevelCode}?IsSort=true`
+      `/api/cau-hinh/danh-muc/loai-danh-muc/DM_MON_HOC/${schoolLevelCode}?IsSort=true`
     );
 
     if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
@@ -383,7 +383,7 @@ export async function fetchCurriculum(filter?: CurriculumFilter): Promise<Curric
 
   try {
     const response = await apiClient.post<CurriculumResponse>(
-      "https://gateway.vtsmas.vn/api/can-bo/phan-phoi-chuong-trinh/phan-trang",
+      "/api/can-bo/phan-phoi-chuong-trinh/phan-trang",
       requestBody
     );
 
@@ -494,7 +494,7 @@ export async function fetchClasses(filter?: ClassFilter): Promise<ClassResponse>
 
   try {
     const response = await apiClient.post<ClassResponse>(
-      "https://gateway.vtsmas.vn/api/hoc-sinh/lop-hoc/phan-trang",
+      "/api/hoc-sinh/lop-hoc/phan-trang",
       requestBody
     );
 
@@ -586,7 +586,7 @@ export async function fetchTeachingSchedule(
 
   try {
     const response = await apiClient.get<TeachingScheduleResponse>(
-      `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/theo-tuan/${fromDate}/${toDate}/${employeeId}/${schoolYearId}/${schoolLevelCode}`
+      `/api/can-bo/lich-bao-giang/theo-tuan/${fromDate}/${toDate}/${employeeId}/${schoolYearId}/${schoolLevelCode}`
     );
 
     // Handle 204 No Content or empty response body
@@ -682,7 +682,7 @@ export async function createTeachingScheduleDetail(payload: CreateTeachingSchedu
   }
 
   try {
-    await apiClient.post("https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/tao/tung-chi-tiet", payload);
+    await apiClient.post("/api/can-bo/lich-bao-giang/tao/tung-chi-tiet", payload);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const errorText = error.response?.data || error.message;
@@ -704,7 +704,7 @@ export async function createTeachingSchedule(
 
   try {
     const response = await apiClient.post<TeachingScheduleResponse>(
-      "https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/tao",
+      "/api/can-bo/lich-bao-giang/tao",
       payload
     );
 
@@ -743,7 +743,7 @@ export async function deleteTeachingScheduleDetails(
 
   try {
     await apiClient.post(
-      `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/xoa/${teachingScheduleId}`,
+      `/api/can-bo/lich-bao-giang/xoa/${teachingScheduleId}`,
       scheduleDetailIds
     );
   } catch (error) {
@@ -826,7 +826,7 @@ export async function fetchLessonFeedback(payload: LessonFeedbackRequest): Promi
 
   try {
     const response = await apiClient.post<LessonFeedbackResponse>(
-      "https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/theo-ngay",
+      "/api/can-bo/so-dau-bai/theo-ngay",
       payload
     );
 
@@ -907,7 +907,7 @@ export async function fetchEmployeeInfo(employeeId: string, schoolYearId: string
 
   try {
     const response = await apiClient.get<EmployeeInfo>(
-      `https://gateway.vtsmas.vn/api/can-bo/v2/${employeeId}/${schoolYearId}`
+      `/api/can-bo/v2/${employeeId}/${schoolYearId}`
     );
 
     if (response.status === 204 || !response.data) {
@@ -949,7 +949,7 @@ export async function fetchApprovalHistory(weekTeachingScheduleId: string): Prom
 
   try {
     const response = await apiClient.get<ApprovalHistoryItem[]>(
-      `https://gateway.vtsmas.vn/api/can-bo/lich-bao-giang/lich-su-phe-duyet/${weekTeachingScheduleId}`
+      `/api/can-bo/lich-bao-giang/lich-su-phe-duyet/${weekTeachingScheduleId}`
     );
 
     // Handle 204 No Content or empty response body
@@ -1008,7 +1008,7 @@ export async function fetchStudentsByClass(classId: string, schoolYearId: string
 
   try {
     const response = await apiClient.get<StudentItem[]>(
-      `https://gateway.vtsmas.vn/api/hoc-sinh/lay-hoc-sinh-theo-lop/${classId}/${schoolYearId}`
+      `/api/hoc-sinh/lay-hoc-sinh-theo-lop/${classId}/${schoolYearId}`
     );
 
     // Handle 204 No Content or empty response body
@@ -1063,13 +1063,15 @@ export async function fetchDivisiveConfiguration(
     throw new Error("No access token found. Please login first.");
   }
 
-  const url = new URL("https://gateway.vtsmas.vn/api/danh-muc-truong/cau-hinh-phan-mon/danh-sach");
-  url.searchParams.append("schoolLevelCode", filter.schoolLevelCode);
-  url.searchParams.append("gradeCode", filter.gradeCode);
-  url.searchParams.append("schoolYearId", filter.schoolYearId);
+  const params = new URLSearchParams({
+    schoolLevelCode: filter.schoolLevelCode,
+    gradeCode: filter.gradeCode,
+    schoolYearId: filter.schoolYearId,
+  });
+  const url = `/api/danh-muc-truong/cau-hinh-phan-mon/danh-sach?${params.toString()}`;
 
   try {
-    const response = await apiClient.post<DivisiveConfigurationItem[]>(url.toString(), []);
+    const response = await apiClient.post<DivisiveConfigurationItem[]>(url, []);
 
     // Handle 204 No Content or empty response body
     if (response.status === 204 || !response.data || (Array.isArray(response.data) && response.data.length === 0)) {
@@ -1111,7 +1113,7 @@ export async function fetchLessonRatingConfigs(
     throw new Error("No access token found. Please login first.");
   }
 
-  const url = `https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/danh-sach-cau-hinh-so-dau-bai-v2/${schoolYearId}/${schoolLevelCode}`;
+  const url = `/api/can-bo/so-dau-bai/danh-sach-cau-hinh-so-dau-bai-v2/${schoolYearId}/${schoolLevelCode}`;
 
   try {
     const response = await apiClient.get<LessonRatingConfig[]>(url);
@@ -1174,7 +1176,7 @@ export async function saveLessonFeedback(payload: SaveLessonFeedbackRequest): Pr
     throw new Error("No access token found. Please login first.");
   }
 
-  const url = "https://gateway.vtsmas.vn/api/can-bo/so-dau-bai/them-sua-so-dau-bai";
+  const url = "/api/can-bo/so-dau-bai/them-sua-so-dau-bai";
 
   try {
     await apiClient.post(url, payload);
@@ -1234,7 +1236,7 @@ export async function fetchClassSubjects(
 
   try {
     const response = await apiClient.get<ClassSubjectItem[]>(
-      `https://gateway.vtsmas.vn/api/hoc-tap/lop-mon-hoc/so-danh-gia/${classId}/${schoolYearId}?semester=1`,
+      `/api/hoc-tap/lop-mon-hoc/so-danh-gia/${classId}/${schoolYearId}?semester=1`,
       {
         headers: {
           SchoolYear: schoolYearCode,
@@ -1324,7 +1326,7 @@ export async function fetchScores(request: FetchScoresRequest, schoolYearCode: s
 
   try {
     const response = await apiClient.post<StudentScoreItem[]>(
-      "https://gateway.vtsmas.vn/api/hoc-tap/so-diem/vao-diem/lay-diem",
+      "/api/hoc-tap/so-diem/vao-diem/lay-diem",
       request,
       {
         headers: {
@@ -1449,7 +1451,7 @@ export async function fetchScoreBookTemplates(
 
   try {
     const response = await apiClient.get<ScoreBookTemplate[]>(
-      `https://gateway.vtsmas.vn/api/cau-hinh/so-diem/mau-so-diem/lay-tat-ca-mau-so-diem/${schoolLevelCode}/${schoolYearId}`
+      `/api/cau-hinh/so-diem/mau-so-diem/lay-tat-ca-mau-so-diem/${schoolLevelCode}/${schoolYearId}`
     );
 
     // Handle 204 No Content or empty response body
@@ -1480,7 +1482,7 @@ export async function publishScores(request: PublishScoreRequest, schoolYearCode
   }
 
   try {
-    await apiClient.put("https://gateway.vtsmas.vn/api/hoc-tap/so-diem/vao-diem/them-diem", request, {
+    await apiClient.put("/api/hoc-tap/so-diem/vao-diem/them-diem", request, {
       headers: {
         SchoolYear: schoolYearCode,
       },
