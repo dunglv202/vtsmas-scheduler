@@ -13,6 +13,7 @@ import {
   type ApprovalHistoryItem,
 } from "@/lib/api";
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 const STATUS_TO_LECTURE_TYPE: Record<number, string> = {
@@ -45,17 +46,23 @@ function getWeekDatesFromDate(date: Date): Date[] {
   return weekDates;
 }
 
-// Get current week's dates (Monday to Sunday)
-function getCurrentWeekDates(): Date[] {
-  return getWeekDatesFromDate(new Date());
-}
-
 // Format date as YYYY-MM-DD for API
 function formatDateForAPI(date: Date): string {
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
   const day = date.getDate().toString().padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+// Parse a YYYY-MM-DD string into a local Date.
+// Built with date components instead of new Date(string) so the result is
+// independent of the browser timezone (UTC parsing can shift the day back one).
+function parseDateParam(value: string | null): Date | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return isNaN(date.getTime()) ? null : date;
 }
 
 // Get day name from date (Monday, Tuesday, etc.)
@@ -81,9 +88,23 @@ export default function TeachingSchedule() {
   const [selectedCell, setSelectedCell] = useState<ScheduleCell | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [schedule, setSchedule] = useState<Record<string, LessonInfo>>({});
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  // Keep the selected week range in the URL (?from=YYYY-MM-DD&to=YYYY-MM-DD) so a
+  // shared link opens the same week for whoever follows it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    // Read the week start from ?from=YYYY-MM-DD; normalize to its Monday so the
+    // anchor date is always the week start. Falls back to today.
+    const from = parseDateParam(searchParams.get("from"));
+    if (from) {
+      const mondayOffset = from.getDay() === 0 ? -6 : 1 - from.getDay();
+      return new Date(from.getFullYear(), from.getMonth(), from.getDate() + mondayOffset);
+    }
+    return new Date();
+  });
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
-  const [weekDates, setWeekDates] = useState<Date[]>(getCurrentWeekDates());
+
+  // Monday–Sunday of the week containing the selected date
+  const weekDates = useMemo(() => getWeekDatesFromDate(selectedDate), [selectedDate]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -96,12 +117,21 @@ export default function TeachingSchedule() {
   const [refreshCounter, setRefreshCounter] = useState(0);
   const [approvalHistory, setApprovalHistory] = useState<ApprovalHistoryItem[]>([]);
 
-  // Update week dates when selected date changes
+  // Keep the calendar popover on the month of the selected date
   useEffect(() => {
-    setWeekDates(getWeekDatesFromDate(selectedDate));
-    // Update calendar month to show the month of the selected date
     setCalendarMonth(selectedDate);
   }, [selectedDate]);
+
+  // Sync the visible week range into the URL as ?from=YYYY-MM-DD&to=YYYY-MM-DD.
+  // replace: true keeps the back/forward history clean; the guard prevents
+  // redundant updates.
+  useEffect(() => {
+    const from = formatDateForAPI(weekDates[0]);
+    const to = formatDateForAPI(weekDates[6]);
+    if (searchParams.get("from") !== from || searchParams.get("to") !== to) {
+      setSearchParams({ ...Object.fromEntries(searchParams), from, to }, { replace: true });
+    }
+  }, [weekDates, searchParams, setSearchParams]);
 
   // The school year the selected week belongs to. Falls back to the primary
   // (latest) school year when the week sits outside every known school year
