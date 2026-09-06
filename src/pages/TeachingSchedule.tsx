@@ -76,7 +76,7 @@ function getSessionNameFromSection(section: number): string {
 }
 
 export default function TeachingSchedule() {
-  const { schoolYear } = useSchoolYear();
+  const { schoolYear, getSchoolYearForDate } = useSchoolYear();
   const { employee } = useEmployee();
   const [selectedCell, setSelectedCell] = useState<ScheduleCell | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -102,6 +102,14 @@ export default function TeachingSchedule() {
     // Update calendar month to show the month of the selected date
     setCalendarMonth(selectedDate);
   }, [selectedDate]);
+
+  // The school year the selected week belongs to. Falls back to the primary
+  // (latest) school year when the week sits outside every known school year
+  // (e.g. the summer gap) or while the year list is still loading.
+  const activeSchoolYear = useMemo(() => {
+    if (!weekDates || weekDates.length === 0) return schoolYear;
+    return getSchoolYearForDate(weekDates[0]) ?? schoolYear;
+  }, [weekDates, schoolYear, getSchoolYearForDate]);
 
   // Fetch classes for filter
   useEffect(() => {
@@ -226,7 +234,7 @@ export default function TeachingSchedule() {
 
   // Fetch teaching schedule from API
   useEffect(() => {
-    if (!schoolYear || !employee?.employeeId) return;
+    if (!activeSchoolYear || !employee?.employeeId) return;
 
     const loadSchedule = async () => {
       setIsLoadingSchedule(true);
@@ -244,7 +252,7 @@ export default function TeachingSchedule() {
         const toDate = formatDateForAPI(sunday);
 
         const employeeId = employee.employeeId;
-        const schoolYearId = schoolYear.schoolYearId;
+        const schoolYearId = activeSchoolYear.schoolYearId;
         const schoolLevelCode = "03"; // TODO: Get from user context or API
 
         const response = await fetchTeachingSchedule(fromDate, toDate, employeeId, schoolYearId, schoolLevelCode);
@@ -336,7 +344,7 @@ export default function TeachingSchedule() {
     };
 
     loadSchedule();
-  }, [weekDates, refreshCounter, schoolYear, employee?.employeeId]);
+  }, [weekDates, refreshCounter, activeSchoolYear, employee?.employeeId]);
 
   return (
     <div className="w-full">

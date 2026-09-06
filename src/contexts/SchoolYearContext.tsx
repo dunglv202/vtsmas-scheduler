@@ -1,11 +1,19 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { fetchSchoolYears, type SchoolYear } from "@/lib/api";
 import { TOKEN_STORAGE_KEY } from "@/lib/auth";
 
+// Parse a yyyy-MM-dd date string into a local-midnight Date (avoid UTC drift).
+function parseISODate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 interface SchoolYearContextType {
   schoolYear: SchoolYear | null;
+  schoolYears: SchoolYear[];
+  getSchoolYearForDate: (date: Date) => SchoolYear | null;
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -15,6 +23,7 @@ const SchoolYearContext = createContext<SchoolYearContextType | undefined>(undef
 
 export function SchoolYearProvider({ children }: { children: ReactNode }) {
   const [schoolYear, setSchoolYear] = useState<SchoolYear | null>(null);
+  const [schoolYears, setSchoolYears] = useState<SchoolYear[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +31,7 @@ export function SchoolYearProvider({ children }: { children: ReactNode }) {
     const authenticated = !!localStorage.getItem(TOKEN_STORAGE_KEY);
     if (!authenticated) {
       setSchoolYear(null);
+      setSchoolYears([]);
       setIsLoading(false);
       return;
     }
@@ -30,6 +40,7 @@ export function SchoolYearProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const schoolYears = await fetchSchoolYears();
+      setSchoolYears(schoolYears);
       if (schoolYears.length > 0) {
         // Use the first one (latest school year)
         setSchoolYear(schoolYears[0]);
@@ -41,6 +52,7 @@ export function SchoolYearProvider({ children }: { children: ReactNode }) {
       console.error("Failed to fetch school year:", err);
       setError(err instanceof Error ? err.message : "Không thể tải thông tin năm học");
       setSchoolYear(null);
+      setSchoolYears([]);
     } finally {
       setIsLoading(false);
     }
@@ -58,6 +70,7 @@ export function SchoolYearProvider({ children }: { children: ReactNode }) {
         loadSchoolYear();
       } else if (!authenticated) {
         setSchoolYear(null);
+        setSchoolYears([]);
       }
     };
 
@@ -67,6 +80,7 @@ export function SchoolYearProvider({ children }: { children: ReactNode }) {
       const authenticated = !!localStorage.getItem(TOKEN_STORAGE_KEY);
       if (!authenticated && schoolYear) {
         setSchoolYear(null);
+        setSchoolYears([]);
       }
     }, 1000);
 
@@ -76,8 +90,28 @@ export function SchoolYearProvider({ children }: { children: ReactNode }) {
     };
   }, [schoolYear]);
 
+  // Resolve the school year that contains the given date. Returns null when the
+  // list isn't loaded yet or the date falls outside every known school year
+  // (e.g. the summer gap between two school years).
+  const getSchoolYearForDate = useCallback(
+    (date: Date): SchoolYear | null => {
+      if (schoolYears.length === 0) return null;
+      const target = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      return (
+        schoolYears.find((sy) => {
+          const start = parseISODate(sy.startDate).getTime();
+          const end = parseISODate(sy.endDate).getTime();
+          return target >= start && target <= end;
+        }) ?? null
+      );
+    },
+    [schoolYears]
+  );
+
   return (
-    <SchoolYearContext.Provider value={{ schoolYear, isLoading, error, refresh: loadSchoolYear }}>
+    <SchoolYearContext.Provider
+      value={{ schoolYear, schoolYears, getSchoolYearForDate, isLoading, error, refresh: loadSchoolYear }}
+    >
       {children}
     </SchoolYearContext.Provider>
   );

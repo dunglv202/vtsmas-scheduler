@@ -141,7 +141,7 @@ export function useLessonDialog({
   employeeName,
   onSave,
 }: UseLessonDialogParams): LessonDialogHookResult {
-  const { schoolYear } = useSchoolYear();
+  const { schoolYear, getSchoolYearForDate } = useSchoolYear();
   const { employee } = useEmployee();
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedLessonId, setSelectedLessonId] = useState<string>("");
@@ -645,19 +645,25 @@ export function useLessonDialog({
       return;
     }
 
+    // Use the school year that each week actually belongs to, so checking a
+    // week near a year boundary queries the right year (falls back to the
+    // primary school year otherwise).
+    const currentWeekYear = getSchoolYearForDate(baseWeek.monday) ?? schoolYear;
+    const previousWeekYear = getSchoolYearForDate(previousWeekStart) ?? currentWeekYear;
+
     Promise.all([
       fetchTeachingSchedule(
         previousWeekFrom,
         previousWeekTo,
         employee.employeeId,
-        schoolYear.schoolYearId,
+        previousWeekYear.schoolYearId,
         DEFAULT_SCHOOL_LEVEL_CODE
       ),
       fetchTeachingSchedule(
         currentWeekFrom,
         currentWeekTo,
         employee.employeeId,
-        schoolYear.schoolYearId,
+        currentWeekYear.schoolYearId,
         DEFAULT_SCHOOL_LEVEL_CODE
       ),
     ])
@@ -747,7 +753,7 @@ export function useLessonDialog({
         setPreviousLecture(null);
         setIsLoadingPreviousLecture(false);
       });
-  }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, weekDates, schoolYear, employee]);
+  }, [isOpen, selectedClassId, selectedSubjectCode, cellInfo, weekDates, schoolYear, getSchoolYearForDate, employee]);
 
   useEffect(() => {
     if (!isOpen || !selectedClassId || !selectedSubjectCode || !cellInfo || !schoolYear) {
